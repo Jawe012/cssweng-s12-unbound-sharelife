@@ -113,18 +113,22 @@ class SideMenu extends StatelessWidget {
                     height: 24,
                   ),
             title: const Text("My Loans"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/member-dash');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(CupertinoIcons.pencil),
             title: const Text("Apply for Loan"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/member-appliform');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.receipt_long),
-            title: const Text("Payment Records"),
+            title: const Text("Pay for Loan"),
             onTap: () {},
           ),
           SizedBox(height: 10),

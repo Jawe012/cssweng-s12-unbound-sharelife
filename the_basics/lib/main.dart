@@ -4,6 +4,7 @@ import 'package:the_basics/features/account_settings.dart';
 import 'package:the_basics/features/admin/admin_dashb.dart';
 import 'package:the_basics/features/encoder/encoder_dashb.dart';
 import 'package:the_basics/features/member/mem_dashb.dart';
+import 'package:the_basics/features/member/mem_appliform.dart';
 import 'package:the_basics/auth/register.dart';
 import 'package:the_basics/auth/staff_register.dart';
 import 'package:the_basics/utils/profile_storage_io.dart';
@@ -97,6 +98,7 @@ class _MainAppState extends State<MainApp> {
         '/admin-dash': (context) => AdminDashboard(),
         '/encoder-dash': (context) => EncoderDashboard(),
         '/member-dash': (context) => MemberDB(),
+        '/member-appliform': (context) => MemAppliform(),
         '/staff-register': (context) => StaffRegisterPage(),
         '/account-options': (context) => AccountSettings(),
       },
