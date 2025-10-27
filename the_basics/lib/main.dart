@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/login.dart';
 import 'package:the_basics/features/account_settings.dart';
+import 'package:the_basics/features/profile_page.dart';
 
 import 'package:the_basics/features/admin/admin_dashb.dart';
 
@@ -111,6 +112,7 @@ class _MainAppState extends State<MainApp> {
         
         '/staff-register': (context) => StaffRegisterPage(),
         '/account-options': (context) => AccountSettings(),
+        '/profile-page': (context) => ProfilePage(),
       },
     );
   }

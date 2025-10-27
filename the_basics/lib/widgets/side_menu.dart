@@ -65,7 +65,7 @@ class SideMenu extends StatelessWidget {
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(CupertinoIcons.pencil),
-            title: const Text("Encode Application Forms"),
+            title: const Text("Encode Loan Applications"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/encoder-appliform');
             },
@@ -90,13 +90,17 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.person),
             title: const Text("Personal Info"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/profile-page');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text("Account Settings"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/account-options');
+            },
           ),
           SizedBox(height: 10),
           ListTile(

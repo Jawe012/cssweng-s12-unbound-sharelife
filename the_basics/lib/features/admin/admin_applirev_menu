@@ -19,30 +19,30 @@ class LoanReviewPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
+                SizedBox(height: 40),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text("Staff Management",
                       style: TextStyle(color: Colors.grey[700])),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Container(
                   color: Colors.grey[200],
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  child: const Text("Loan Review",
+                      EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  child: Text("Loan Review",
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: Colors.black)),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text("Loan & Payment Records",
                       style: TextStyle(color: Colors.grey[700])),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Text("Vouchers & Disbursements",
                       style: TextStyle(color: Colors.grey[700])),
                 ),
@@ -60,12 +60,12 @@ class LoanReviewPage extends StatelessWidget {
                   height: 60,
                   color: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
-                        children: const [
+                        children: [
                           CircleAvatar(
                             radius: 16,
                             backgroundColor: Colors.transparent,
@@ -81,7 +81,7 @@ class LoanReviewPage extends StatelessWidget {
                         ],
                       ),
                       Row(
-                        children: const [
+                        children: [
                           Text("Resources   Contact   Help   "),
                           Icon(Icons.person_outline),
                         ],
@@ -92,11 +92,11 @@ class LoanReviewPage extends StatelessWidget {
 
                 // HEADER
                 Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: EdgeInsets.all(24.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         "Loan Review",
                         style: TextStyle(
                             fontSize: 28, fontWeight: FontWeight.bold),
@@ -106,9 +106,9 @@ class LoanReviewPage extends StatelessWidget {
                           color: Colors.grey[300],
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
-                        child: const Text(
+                        child: Text(
                           "5 Applications Pending",
                           style: TextStyle(fontSize: 14),
                         ),
@@ -116,19 +116,19 @@ class LoanReviewPage extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
                     "Review and approve/reject pending loan applications.",
                     style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 // DATA TABLE
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
                     child: Card(
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
@@ -136,7 +136,7 @@ class LoanReviewPage extends StatelessWidget {
                       child: SingleChildScrollView(
                         scrollDirection: Axis.vertical,
                         child: DataTable(
-                          columns: const [
+                          columns: [
                             DataColumn(label: Text("Applicant")),
                             DataColumn(label: Text("Amount")),
                             DataColumn(label: Text("Loan Type")),
@@ -184,7 +184,7 @@ class LoanReviewPage extends StatelessWidget {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: const Text("Review"),
+        child: Text("Review"),
       )),
     ]);
   }

@@ -37,7 +37,7 @@ class _TopNavBarState extends State<TopNavBar> {
   Widget build(BuildContext context) {
     return Container(
       height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
   color: Colors.white,
   boxShadow: [
@@ -45,10 +45,10 @@ class _TopNavBarState extends State<TopNavBar> {
       color: Colors.grey.withOpacity(0.5),
       spreadRadius: 0,
       blurRadius: 4,
-      offset: const Offset(0, 2),
+      offset: Offset(0, 2),
     ),
   ],
-  border: const Border(
+  border: Border(
     bottom: BorderSide(
       color: Colors.grey,
       width: 0.5,
@@ -62,8 +62,8 @@ class _TopNavBarState extends State<TopNavBar> {
             logoIsBackButton: widget.logoIsBackButton,
             onLogoBack: widget.onLogoBack,
           ),
-          const Spacer(),
-          const MenuOptions(),
+          Spacer(),
+          MenuOptions(),
           ProfileBtn(onAccountSettings: widget.onAccountSettings),
         ],
       ),
@@ -107,14 +107,14 @@ class SideMenuBtn extends StatelessWidget {
           },
         ),
 
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
 
         // org name + role
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               "Unbound Sharelife",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -124,7 +124,7 @@ class SideMenuBtn extends StatelessWidget {
             ),
             Text(
               splash,  // Display the splash value
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
               ),
@@ -196,7 +196,7 @@ class _ProfileBtnState extends State<ProfileBtn> {
             if (widget.onAccountSettings != null) {
               widget.onAccountSettings!();
             } else if (widget.accountSettingsRoute) {
-              Navigator.pushNamed(context, '/account-options');
+              Navigator.pushNamed(context, '/profile-page');
             }
           },
           padding: EdgeInsets.symmetric(vertical: 8, horizontal: 5),

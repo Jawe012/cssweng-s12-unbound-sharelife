@@ -9,36 +9,36 @@ class EncoderDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
+      backgroundColor: Color(0xFFEFEFEF),
       body: Column(
         children: [
-          const TopNavBar(splash: "Encoder"),
+          TopNavBar(splash: "Encoder"),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SideMenu(role: "Encoder"),
+                 SideMenu(role: "Encoder"),
                 Expanded(
                   child: Container(
-                    margin: const EdgeInsets.only(left: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    margin: EdgeInsets.only(left: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
+                      constraints: BoxConstraints(maxWidth: 900),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
+                          Text(
                             "Overview",
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
                           Expanded(
                             child: GridView.count(
                               crossAxisCount: 2,
                               crossAxisSpacing: 16,
                               mainAxisSpacing: 16,
                               childAspectRatio: 2,
-                              children: const [
+                              children: [
                                 SummaryCard(
                                   title: "Pending Applications", 
                                   desc: "Applications currently awaiting review, decision, or further action", 
@@ -97,11 +97,11 @@ class SummaryCard extends StatelessWidget {
       color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Row(
           children: [
             Icon(icon, size: 200, color: CupertinoColors.placeholderText),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -109,17 +109,17 @@ class SummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     title, 
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600), 
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600), 
                     softWrap: true,
                     overflow: TextOverflow.visible),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     desc, 
-                    style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600),
                     softWrap: true,
                     overflow: TextOverflow.visible),
-                  const SizedBox(height: 8),
-                  Text(value, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text(value, style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),

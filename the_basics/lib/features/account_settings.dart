@@ -26,6 +26,14 @@ class _AccountSettingsState extends State<AccountSettings> {
     );
   }
 
+  Widget _profileHeading() {
+    return Row(
+      children: [
+        
+      ],
+    );
+  }
+
   Widget _accountSettings() {
     return SingleChildScrollView(
       child: Padding(
@@ -90,6 +98,8 @@ class _AccountSettingsState extends State<AccountSettings> {
       backgroundColor: const Color(0xFFEFEFEF),
       body: Column(
         children: [
+
+          // Top Navbar things
           TopNavBar(splash: "Settings", 
           logoIsBackButton: true, 
           onAccountSettings: () {},
@@ -106,7 +116,14 @@ class _AccountSettingsState extends State<AccountSettings> {
                   flex: 4, // right area ~80%
                   child: Container(
                     color: Colors.transparent,
-                    child: _accountSettings(),
+                    child: Column(
+
+                      // Main content area
+                      children: [
+                        _profileHeading(),
+                        _accountSettings(),
+                      ]
+                    ),
                   ),
                 ),
               ],
