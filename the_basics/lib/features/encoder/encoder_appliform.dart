@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:the_basics/widgets/side_menu.dart';
 
-class MemAppliform extends StatefulWidget {
-  const MemAppliform({super.key});
+class EncAppliform extends StatefulWidget {
+  const EncAppliform({super.key});
 
   @override
-  State<MemAppliform> createState() => _MemAppliformState();
+  State<EncAppliform> createState() => _EncAppliformState();
 }
 
-class _MemAppliformState extends State<MemAppliform> {
+class _EncAppliformState extends State<EncAppliform> {
   final TextEditingController appliDateController = TextEditingController();
   final TextEditingController loanAmtController = TextEditingController();
   final TextEditingController anlIncController = TextEditingController();

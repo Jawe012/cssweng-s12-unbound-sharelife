@@ -58,13 +58,17 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: Icon(Icons.query_stats),
             title: const Text("Dashboard"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-dash');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(CupertinoIcons.pencil),
-            title: const Text("Loan Applications"),
-            onTap: () {},
+            title: const Text("Encode Application Forms"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-appliform');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
