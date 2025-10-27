@@ -30,13 +30,17 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.people),
             title: const Text("Staff Management"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/admin-dash');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.checklist_rtl),
             title: const Text("Loan Approvals"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/admin-loanrevdetails');
+            },
           ),
           SizedBox(height: 10),
           ListTile(

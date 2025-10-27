@@ -4,6 +4,8 @@ import 'package:the_basics/features/account_settings.dart';
 import 'package:the_basics/features/profile_page.dart';
 
 import 'package:the_basics/features/admin/admin_dashb.dart';
+import 'package:the_basics/features/admin/admin_loanreview.dart';
+import 'package:the_basics/features/admin/admin_loanrevdetails.dart';
 
 import 'package:the_basics/features/encoder/encoder_dashb.dart';
 import 'package:the_basics/features/encoder/encoder_appliform.dart';
@@ -103,6 +105,8 @@ class _MainAppState extends State<MainApp> {
         '/register': (context) => RegisterPage(),
 
         '/admin-dash': (context) => AdminDashboard(),
+        '/admin-loanreview': (context) => LoanReviewPage(),
+        '/admin-loanrevdetails': (context) => LoanReviewDetailsPage(),
         
         '/encoder-dash': (context) => EncoderDashboard(),
         '/encoder-appliform': (context) => EncAppliform(),
