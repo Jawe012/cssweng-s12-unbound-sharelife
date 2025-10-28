@@ -1,6 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:the_basics/widgets/side_menu.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+
+class LoanApplication {
+  final int memberId;
+  final int amount;
+  final String installment;
+  final String repaymentTerm;
+  final int? loanAmount;
+  final int? annualIncome;
+  final String? repaymentFrequency;
+  final String? memberFirstName;
+  final String? memberLastName;
+  final String? memberBirthDate;
+  final String? spouseFirstName;
+  final String? spouseLastName;
+  final String? childFirstName;
+  final String? childLastName;
+  final String? memberEmail;
+  final String? memberPhone;
+  final String? address;
+  final bool consent;
+
+  LoanApplication({
+    required this.memberId,
+    required this.amount,
+    required this.installment,
+    required this.repaymentTerm,
+    this.loanAmount,
+    this.annualIncome,
+    this.repaymentFrequency,
+    this.memberFirstName,
+    this.memberLastName,
+    this.memberBirthDate,
+    this.spouseFirstName,
+    this.spouseLastName,
+    this.childFirstName,
+    this.childLastName,
+    this.memberEmail,
+    this.memberPhone,
+    this.address,
+    required this.consent,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'member_id': memberId,
+      'amount': amount,
+      'installment': installment,
+      'repayment_term': repaymentTerm,
+      'loan_amount': loanAmount,
+      'annual_income': annualIncome,
+      'repayment_frequency': repaymentFrequency,
+      'member_first_name': memberFirstName,
+      'member_last_name': memberLastName,
+      'member_birth_date': memberBirthDate,
+      'comaker_spouse_first_name': spouseFirstName,
+      'comaker_spouse_last_name': spouseLastName,
+      'comaker_child_first_name': childFirstName,
+      'comaker_child_last_name': childLastName,
+      'member_email': memberEmail,
+      'member_phone': memberPhone,
+      'address': address,
+      'consent': consent,
+    };
+  }
+}
 
 class MemAppliform extends StatefulWidget {
   const MemAppliform({super.key});
@@ -35,6 +102,98 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController phoneNumController = TextEditingController();
   final TextEditingController addrController = TextEditingController();
   bool agreeTerms = false;
+
+  Future<void> submitForm() async {
+  // Validate consent
+  if (!agreeTerms) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("You must agree to the terms before submitting."))
+    );
+    return;
+  }
+
+  //Check if user is logged in
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("You must be logged in to submit an application."))
+    );
+    return;
+  }
+
+  // Basic validation for required fields
+  if (loanAmtController.text.isEmpty || emailController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Please fill in all required fields."))
+    );
+    return;
+  }
+
+  final email = user.email;
+
+  //Check if user is a member
+  if(email == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("User email not found."))
+    );
+    return;
+  }
+
+  final memberRecord = await Supabase.instance.client
+      .from('members')
+      .select('id')
+      .eq('email_address', email)
+      .maybeSingle();
+
+  if (memberRecord == null || memberRecord['id'] == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Member record not found."))
+    );
+    return;
+  }
+
+  Future<void> submitToSupabase(LoanApplication application) async {
+  final supabase = Supabase.instance.client;
+
+  try {
+    final response = await supabase
+        .from('loan_application')
+        .insert(application.toJson());
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Application submitted successfully!"))
+    );
+  } catch (e) {
+    print("Submission error: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to submit application. Please try again."))
+    );
+  }
+  }
+
+  final application = LoanApplication(
+    memberId: memberRecord['id'],
+    amount: int.tryParse(loanAmtController.text) ?? 0,
+    installment: instController.text,
+    repaymentTerm: termController.text,
+    loanAmount: int.tryParse(loanAmtController.text),
+    annualIncome: int.tryParse(anlIncController.text),
+    repaymentFrequency: null, // Optional: add if you have a field
+    memberFirstName: fNameController.text,
+    memberLastName: lNameController.text,
+    memberBirthDate: bDateController.text,
+    spouseFirstName: spouseFNameController.text,
+    spouseLastName: spouseLNameController.text,
+    childFirstName: childFNameController.text,
+    childLastName: childLNameController.text,
+    memberEmail: emailController.text,
+    memberPhone: phoneNumController.text,
+    address: addrController.text,
+    consent: agreeTerms,
+  );
+
+  await submitToSupabase(application);
+  }
 
 
   Widget buttonsRow() {
@@ -410,6 +569,7 @@ class _MemAppliformState extends State<MemAppliform> {
                                   Center( 
                                     child: ElevatedButton.icon(
                                       onPressed: submitForm,
+                                      
                                       label: const Text(
                                         "Submit Application",
                                         style: TextStyle(color: Colors.white),
@@ -447,14 +607,6 @@ class _MemAppliformState extends State<MemAppliform> {
 
 }
 
-
-
-// classes for form fields
-
-void submitForm() {
-  print("Form submitted!");
-  // add your back-end logic here
-}
 
 class TextInputField extends StatelessWidget {
   final String label;
