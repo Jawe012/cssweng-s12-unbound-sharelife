@@ -24,6 +24,32 @@ class SideMenu extends StatelessWidget {
 
   List<Widget> _buildMenuItems(BuildContext context) {
     switch (role) {
+      case "Settings":
+        return [
+          SizedBox(height: 10),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text("Personal Info"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/profile-page');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text("Account Settings"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/account-options');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
+            leading: const Icon(Icons.receipt_long),
+            title: const Text("My Statements"),
+            onTap: () {},
+          )
+        ];
+
       case "Admin":
         return [
           SizedBox(height: 10),
@@ -37,20 +63,28 @@ class SideMenu extends StatelessWidget {
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.checklist_rtl),
-            title: const Text("Loan Approvals"),
+            title: const Text("Loan Application Review"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/admin-loanreview');
             },
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.track_changes),
-            title: const Text("Financial Tracking & Reports"),
+            leading: const Icon(Icons.receipt),
+            title: const Text("Payment Form Review"),
+            onTap: () {
+              // Navigator.pushReplacementNamed(context, '/admin-loanreview');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
+            leading: const Icon(Icons.folder),
+            title: const Text("Loan & Payment Records"),
             onTap: () {},
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(CupertinoIcons.eye),
+            leading: const Icon(Icons.file_present),
             title: const Text("Vouchers & Disbursements Oversight"),
             onTap: () {},
           ),
@@ -76,8 +110,8 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.folder_open),
-            title: const Text("Record Installments"),
+            leading: const Icon(Icons.attach_money),
+            title: const Text("Encode Payment Forms"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/encoder-payment');
             },
@@ -86,32 +120,6 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.supervisor_account),
             title: const Text("Member Info"),
-            onTap: () {},
-          )
-        ];
-
-      case "Settings":
-        return [
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text("Personal Info"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/profile-page');
-            },
-          ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text("Account Settings"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/account-options');
-            },
-          ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: const Text("My Statements"),
             onTap: () {},
           )
         ];
@@ -141,9 +149,11 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.receipt_long),
+            leading: const Icon(Icons.attach_money),
             title: const Text("Pay for Loan"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/member-payment');
+            },
           ),
           SizedBox(height: 10),
           ListTile(

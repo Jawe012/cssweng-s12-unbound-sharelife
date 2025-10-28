@@ -13,6 +13,7 @@ import 'package:the_basics/features/encoder/encoder_payment.dart';
 
 import 'package:the_basics/features/member/mem_dashb.dart';
 import 'package:the_basics/features/member/mem_appliform.dart';
+import 'package:the_basics/features/member/mem_payment.dart';
 
 import 'package:the_basics/auth/register.dart';
 import 'package:the_basics/auth/staff_register.dart';
@@ -115,6 +116,7 @@ class _MainAppState extends State<MainApp> {
         
         '/member-dash': (context) => MemberDB(),
         '/member-appliform': (context) => MemAppliform(),
+        '/member-payment': (context) => MemberPaymentForm(),
         
         '/staff-register': (context) => StaffRegisterPage(),
         '/account-options': (context) => AccountSettings(),

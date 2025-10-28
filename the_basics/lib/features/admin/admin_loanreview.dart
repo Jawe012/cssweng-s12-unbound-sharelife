@@ -23,7 +23,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey,
+        color: Colors.grey[400],
         borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
@@ -34,6 +34,56 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget applicationsTable() {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: LayoutBuilder(
+          builder:(context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: DataTable(
+                columns: [
+                  DataColumn(label: Text("Applicant", style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text("Loan Type", style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text("Date Submitted", style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
+                ],
+                rows: [
+                  _buildRow("Mark Reyes", "₱50,000",
+                      "Personal Loan", "Oct 20, 2025"),
+                  _buildRow("Jane Smith", "₱50,000", "Home Loan",
+                      "Oct 20, 2025"),
+                  _buildRow("Juan Dela Cruz", "₱50,000",
+                      "Personal Loan", "Oct 20, 2025"),
+                  _buildRow("Anne Mendoza", "₱50,000", "Home Loan",
+                      "Oct 20, 2025"),
+                  _buildRow("Randy Villanueva", "₱40,000",
+                      "Personal Loan", "Oct 20, 2025"),
+                  _buildRow("John Doe", "₱50,000", "Personal Loan",
+                      "Oct 21, 2025"),
+                ],
+              ),
+            );
+            
+          }
         ),
       ),
     );
@@ -98,41 +148,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                           SizedBox(height: 24),
 
                           // table
-                          Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.0),
-                              child: Card(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                elevation: 1,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: DataTable(
-                                    columns: [
-                                      DataColumn(label: Text("Applicant", style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text("Loan Type", style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text("Date Submitted", style: TextStyle(fontWeight: FontWeight.bold))),
-                                      DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
-                                    ],
-                                    rows: [
-                                      _buildRow("Mark Reyes", "₱50,000",
-                                          "Personal Loan", "Oct 20, 2025"),
-                                      _buildRow("Jane Smith", "₱50,000", "Home Loan",
-                                          "Oct 20, 2025"),
-                                      _buildRow("Juan Dela Cruz", "₱50,000",
-                                          "Personal Loan", "Oct 20, 2025"),
-                                      _buildRow("Anne Mendoza", "₱50,000", "Home Loan",
-                                          "Oct 20, 2025"),
-                                      _buildRow("Randy Villanueva", "₱40,000",
-                                          "Personal Loan", "Oct 20, 2025"),
-                                      _buildRow("John Doe", "₱50,000", "Personal Loan",
-                                          "Oct 21, 2025"),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                          applicationsTable(),
                           SizedBox(height: 24),
 
                         ],

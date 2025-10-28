@@ -18,6 +18,8 @@ class _EncAppliformState extends State<EncAppliform> {
   final TextEditingController anlIncController = TextEditingController();
   final TextEditingController instController = TextEditingController();
   final TextEditingController termController = TextEditingController();
+  final TextEditingController businessController = TextEditingController();
+  final TextEditingController reasonController = TextEditingController();
   
   // personal info
   final TextEditingController fNameController = TextEditingController();
@@ -143,6 +145,32 @@ class _EncAppliformState extends State<EncAppliform> {
             ),
           ],
         ),
+        SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: DropdownInputField(
+                label: "Business Type",
+                controller: businessController,
+                items: [
+                  "Sole Proprietorship",
+                  "Partnership",
+                  "Corporation",
+                  "Cooperative",
+                ],
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: TextInputField(
+              label: "Reason", 
+              controller: reasonController
+              ),
+            ),
+          ],
+        ),
+
       ],
     );
   }
@@ -324,7 +352,6 @@ class _EncAppliformState extends State<EncAppliform> {
           // top nav bar
           const TopNavBar(splash: "Encoder"),
 
-          // main area
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,6 +437,7 @@ class _EncAppliformState extends State<EncAppliform> {
                                   Center( 
                                     child: ElevatedButton.icon(
                                       onPressed: submitForm,
+                                      
                                       label: const Text(
                                         "Submit Application",
                                         style: TextStyle(color: Colors.white),

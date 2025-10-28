@@ -12,6 +12,8 @@ class LoanApplication {
   final int? loanAmount;
   final int? annualIncome;
   final String? repaymentFrequency;
+  final String? businessType;
+  final String? reason;
   final String? memberFirstName;
   final String? memberLastName;
   final String? memberBirthDate;
@@ -32,6 +34,8 @@ class LoanApplication {
     this.loanAmount,
     this.annualIncome,
     this.repaymentFrequency,
+    this.businessType,
+    this.reason,
     this.memberFirstName,
     this.memberLastName,
     this.memberBirthDate,
@@ -54,6 +58,8 @@ class LoanApplication {
       'loan_amount': loanAmount,
       'annual_income': annualIncome,
       'repayment_frequency': repaymentFrequency,
+      'business_type': businessType,
+      'reason': reason,
       'member_first_name': memberFirstName,
       'member_last_name': memberLastName,
       'member_birth_date': memberBirthDate,
@@ -85,6 +91,8 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController anlIncController = TextEditingController();
   final TextEditingController instController = TextEditingController();
   final TextEditingController termController = TextEditingController();
+  final TextEditingController businessTypeController = TextEditingController();
+  final TextEditingController reasonController = TextEditingController();
   
   // personal info
   final TextEditingController fNameController = TextEditingController();
@@ -179,6 +187,7 @@ class _MemAppliformState extends State<MemAppliform> {
     loanAmount: int.tryParse(loanAmtController.text),
     annualIncome: int.tryParse(anlIncController.text),
     repaymentFrequency: null, // Optional: add if you have a field
+    businessType: businessTypeController.text,
     memberFirstName: fNameController.text,
     memberLastName: lNameController.text,
     memberBirthDate: bDateController.text,
@@ -302,6 +311,32 @@ class _MemAppliformState extends State<MemAppliform> {
             ),
           ],
         ),
+        SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: DropdownInputField(
+                label: "Business Type",
+                controller: businessTypeController,
+                items: [
+                  "Sole Proprietorship",
+                  "Partnership",
+                  "Corporation",
+                  "Cooperative",
+                ],
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: TextInputField(
+              label: "Reason", 
+              controller: reasonController
+              ),
+            ),
+          ],
+        ),
+
       ],
     );
   }
