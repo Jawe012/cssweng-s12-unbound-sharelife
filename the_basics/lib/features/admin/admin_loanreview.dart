@@ -50,7 +50,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
       body: Column(
         children: [
           // top nav bar
-          TopNavBar(splash: "Member"),
+          TopNavBar(splash: "Admin"),
 
           // main area
           Expanded(
@@ -59,7 +59,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
               children: [
 
                 // sidebar
-                SideMenu(role: "Member"),
+                SideMenu(role: "Admin"),
 
                 // main content
                 Expanded(
