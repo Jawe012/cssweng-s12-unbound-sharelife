@@ -39,7 +39,7 @@ class SideMenu extends StatelessWidget {
             leading: const Icon(Icons.checklist_rtl),
             title: const Text("Loan Approvals"),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-loanrevdetails');
+              Navigator.pushReplacementNamed(context, '/admin-loanreview');
             },
           ),
           SizedBox(height: 10),

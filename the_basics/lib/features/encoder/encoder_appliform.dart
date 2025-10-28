@@ -322,7 +322,7 @@ class _EncAppliformState extends State<EncAppliform> {
         children: [
 
           // top nav bar
-          const TopNavBar(splash: "Member"),
+          const TopNavBar(splash: "Encoder"),
 
           // main area
           Expanded(
@@ -331,7 +331,7 @@ class _EncAppliformState extends State<EncAppliform> {
               children: [
 
                 // sidebar
-                const SideMenu(role: "Member"),
+                const SideMenu(role: "Encoder"),
 
                 // main content
                 Expanded(

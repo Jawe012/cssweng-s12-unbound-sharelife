@@ -155,7 +155,9 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
       DataCell(Text(type)),
       DataCell(Text(date)),
       DataCell(ElevatedButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.pushNamed(context, '/admin-loanrevdetails');
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue,
           shape:
