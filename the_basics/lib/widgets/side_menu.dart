@@ -78,7 +78,9 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.folder_open),
             title: const Text("Record Installments"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-payment');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
