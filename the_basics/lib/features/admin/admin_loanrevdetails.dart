@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/side_menu.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoanReviewDetailsPage extends StatefulWidget {
   const LoanReviewDetailsPage({super.key});
@@ -10,6 +11,26 @@ class LoanReviewDetailsPage extends StatefulWidget {
 }
 
 class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
+  int loanAmount = 0;
+  int annualIncome = 0;
+  int age = 0;
+  String installment = '';
+  String repaymentTerm = '';
+  String businessType = '';
+  String reason = '';
+  String memberFirstName = '';
+  String memberLastName = '';
+  String memberBirthDate = '';
+  String spouseFirstName = '';
+  String spouseLastName = '';
+  String childFirstName = '';
+  String childLastName = '';
+  String memberEmail = '';
+  String memberPhone = '';
+  String address = '';
+
+  bool _isLoading = true;
+
   String decision = 'Approve';
   String reason1 = 'Missing Documents';
   String reason2 = 'Incomplete Requirements';
@@ -25,7 +46,114 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   double titleFont = 20;
   double contentFont = 16;
 
+  //calculate age
+  int calculateAge(DateTime birthDate) {
+    DateTime today = DateTime.now();
+    int age = today.year - birthDate.year;
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
 
+  //getting loan details
+  Future<void> fetchLoanDetails(int id) async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('loan_application')
+          .select()
+          .eq('application_id', id)
+          .maybeSingle();
+
+      if (response != null) {
+        setState(() {
+          // Loan Info
+          loanAmount = response['loan_amount'] ?? 0;
+          annualIncome = response['annual_income'] ?? 0;
+          installment = response['installment'] ?? '';
+          repaymentTerm = response['repayment_term'] ?? '';
+          businessType = response['business_type'] ?? '';
+          reason = response['reason'] ?? '';
+
+          // Personal Info
+          memberFirstName = response['member_first_name'] ?? '';
+          memberLastName = response['member_last_name'] ?? '';
+          memberBirthDate = response['member_birth_date']?.toString() ?? '';
+          if (memberBirthDate.isNotEmpty) {
+            age = calculateAge(DateTime.parse(memberBirthDate));
+          }
+
+          // Co-makers
+          spouseFirstName = response['comaker_spouse_first_name'] ?? '';
+          spouseLastName = response['comaker_spouse_last_name'] ?? '';
+          childFirstName = response['comaker_child_first_name'] ?? '';
+          childLastName = response['comaker_child_last_name'] ?? '';
+
+          // Contact Info
+          memberEmail = response['member_email'] ?? '';
+          memberPhone = response['member_phone'] ?? '';
+          address = response['address'] ?? '';
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading loan details: $e'))
+      );
+    }
+  }
+
+  @override
+  @override
+  void initState() {
+    super.initState();
+    // Defer accessing ModalRoute.of(context) until after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final loanId = ModalRoute.of(context)?.settings.arguments as int?;
+      if (loanId != null) {
+        fetchLoanDetails(loanId);
+      }
+    });
+  }
+
+  //changing the status
+  Future<void> updateLoanStatus(String status) async {
+    try {
+      final loanId = ModalRoute.of(context)?.settings.arguments as int?;
+      if (loanId == null) {
+        throw Exception('No loan ID provided');
+      }
+
+      await Supabase.instance.client
+          .from('loan_application')
+          .update({
+            'status': status,
+            'admin_remarks': remarksController.text,
+            'approved_by': Supabase.instance.client.auth.currentUser?.id,
+          })
+          .eq('application_id', loanId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Loan $status successfully."))
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update status: $e"))
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    remarksController.dispose();
+    super.dispose();
+  }
 
   Widget loanInfo(double loanAmt, double annualInc, int installments,
                   String repayTerm, String busType) {
@@ -245,7 +373,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         ElevatedButton(
-          onPressed: () {},
+          onPressed: () => updateLoanStatus('Approved'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             padding: const EdgeInsets.symmetric(
@@ -258,7 +386,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
         ),
         const SizedBox(width: 16),
         ElevatedButton(
-          onPressed: () {},
+          onPressed: () => updateLoanStatus('Rejected'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             padding: const EdgeInsets.symmetric(
@@ -274,130 +402,55 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
     );
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
       body: Column(
         children: [
-          // top nav bar
           const TopNavBar(splash: "Admin"),
-
-          // main area
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // sidebar
                 const SideMenu(role: "Admin"),
-
-                // main content
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.only(left: 16),
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-
-
-                          // title
-                          Text(
-                            "Loan Application Review",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Review applicant details and approve or reject this loan.",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
-                          SizedBox(height: 30),
-
-
-                          // back button
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: _isLoading 
+                      ? const Center(child: CircularProgressIndicator())
+                      : ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 900),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[350],
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 12),
+                              // ...existing title and back button...
+                              
+                              // Updated GridView with state variables
+                              GridView(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 30,
+                                  mainAxisSpacing: 30,
+                                  mainAxisExtent: 230,
                                 ),
-                                child: const Text(
-                                  "Back to Loan Reviews",
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-
-
-                          // main card
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 4),
-                                  ),
+                                children: [
+                                  loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 
+                                         int.tryParse(installment) ?? 0, repaymentTerm, businessType),
+                                  personalInfo(memberFirstName, memberLastName, memberBirthDate, age),
+                                  loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName),
+                                  contactInfo(memberEmail, memberPhone, address),
                                 ],
                               ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    
-                                    // Applicant info (static data for now)
-                                    GridView(
-                                      shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 30,
-                                        mainAxisSpacing: 30,
-                                        mainAxisExtent: 230,
-                                      ),
-                                      children: [
-                                        loanInfo(50000, 250000, 12, "Monthly", "Retail"),
-                                        personalInfo("Mark Anthony", "Garcia", "January 1, 1970", 54),
-                                        loanCoMakers("Mariel Ariel", "Garcia", "Miguel", "Garcia"),
-                                        contactInfo("markanthony@email.com", "+63 917 123 4567", "Malate, Manila"),
-                                      ],
-                                    ),
-                                    Divider(),
-
-
-                                    // Decision Section
-                                    decisionSection(),
-
-
-                                    // Buttons
-                                    buttonsRow(),
-                                  ],
-                                ),
-                              ),
-                            ),
+                              Divider(),
+                              decisionSection(),
+                              buttonsRow(),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
                   ),
                 ),
               ],

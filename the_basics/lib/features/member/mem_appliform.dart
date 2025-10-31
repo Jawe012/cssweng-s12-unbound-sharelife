@@ -6,21 +6,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoanApplication {
   final int memberId;
-  final int amount;
-  final String installment;
-  final String repaymentTerm;
-  final int? loanAmount;
+  //loan information
+  final int loanAmount;
   final int? annualIncome;
-  final String? repaymentFrequency;
+  final String? installment;
+  final String? repaymentTerm;
   final String? businessType;
   final String? reason;
+
+  //member personal info
   final String? memberFirstName;
   final String? memberLastName;
   final String? memberBirthDate;
+
+  //comaker info
   final String? spouseFirstName;
   final String? spouseLastName;
   final String? childFirstName;
   final String? childLastName;
+
+  //contact info
   final String? memberEmail;
   final String? memberPhone;
   final String? address;
@@ -28,12 +33,10 @@ class LoanApplication {
 
   LoanApplication({
     required this.memberId,
-    required this.amount,
+    required this.loanAmount,
     required this.installment,
     required this.repaymentTerm,
-    this.loanAmount,
     this.annualIncome,
-    this.repaymentFrequency,
     this.businessType,
     this.reason,
     this.memberFirstName,
@@ -52,12 +55,10 @@ class LoanApplication {
   Map<String, dynamic> toJson() {
     return {
       'member_id': memberId,
-      'amount': amount,
       'installment': installment,
       'repayment_term': repaymentTerm,
       'loan_amount': loanAmount,
       'annual_income': annualIncome,
-      'repayment_frequency': repaymentFrequency,
       'business_type': businessType,
       'reason': reason,
       'member_first_name': memberFirstName,
@@ -149,13 +150,31 @@ class _MemAppliformState extends State<MemAppliform> {
 
   final memberRecord = await Supabase.instance.client
       .from('members')
-      .select('id')
+      .select('id, first_name, last_name, date_of_birth')
       .eq('email_address', email)
       .maybeSingle();
 
   if (memberRecord == null || memberRecord['id'] == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Member record not found."))
+    );
+    return;
+  }
+
+  if (memberRecord['date_of_birth'] == null) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text("Birth date missing in member record."))
+  );
+  return;
+  }
+
+  final DateTime dbBirthDate = DateTime.parse(memberRecord['date_of_birth']);
+  final String formattedDbBirthDate = "${dbBirthDate.month}/${dbBirthDate.day}/${dbBirthDate.year}";
+
+  if(memberRecord['first_name'] != fNameController.text ||
+     memberRecord['last_name'] != lNameController.text || formattedDbBirthDate != bDateController.text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Provided name does not match member records."))
     );
     return;
   }
@@ -181,13 +200,12 @@ class _MemAppliformState extends State<MemAppliform> {
 
   final application = LoanApplication(
     memberId: memberRecord['id'],
-    amount: int.tryParse(loanAmtController.text) ?? 0,
+    loanAmount: int.tryParse(loanAmtController.text) ?? 0,
     installment: instController.text,
     repaymentTerm: termController.text,
-    loanAmount: int.tryParse(loanAmtController.text),
     annualIncome: int.tryParse(anlIncController.text),
-    repaymentFrequency: null, // Optional: add if you have a field
     businessType: businessTypeController.text,
+    reason: reasonController.text,
     memberFirstName: fNameController.text,
     memberLastName: lNameController.text,
     memberBirthDate: bDateController.text,

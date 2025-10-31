@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:the_basics/widgets/side_menu.dart';
 import 'package:the_basics/data/loan_data.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoanReviewPage extends StatefulWidget {
   const LoanReviewPage({super.key});
@@ -10,14 +11,66 @@ class LoanReviewPage extends StatefulWidget {
   State<LoanReviewPage> createState() => _LoanReviewPageState();
 }
 
+String formatDate(dynamic timestamp) {
+  if (timestamp == null) return 'Unknown';
+  try {
+    if (timestamp is DateTime) {
+      final d = timestamp;
+      return "${d.month}/${d.day}/${d.year}";
+    } else if (timestamp is int) {
+      final d = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      return "${d.month}/${d.day}/${d.year}";
+    } else {
+      final d = DateTime.parse(timestamp.toString());
+      return "${d.month}/${d.day}/${d.year}";
+    }
+  } catch (_) {
+    return 'Unknown';
+  }
+}
+
+
 class _LoanReviewPageState extends State<LoanReviewPage> {
   int? sortColumnIndex;
   bool isAscending = true;
-  List<Map<String, dynamic>> loans = loansData;
+  List<Map<String, dynamic>> loans = [];
   double buttonHeight = 28;
 
+  @override
+  void initState() {
+    super.initState();
+    fetchLoans();
+  }
 
+ Future<void> fetchLoans() async {
+  try {
+    final resp = await Supabase.instance.client
+        .from('loan_application')
+        .select('application_id, member_first_name, member_last_name, loan_amount, reason, created_at, status')
+        .eq('status', 'Pending');
 
+    if (!mounted) return;
+
+    setState(() {
+      // Convert the response directly to List<Map<String, dynamic>>
+      if (resp is List) {
+        loans = List<Map<String, dynamic>>.from(resp);
+      } else {
+        // Handle empty or invalid response
+        loans = [];
+      }
+    });
+    
+    print("Fetched loans: $resp");
+  } catch (e) {
+    print('fetchLoans error: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading loans: $e'))
+      );
+    }
+  }
+  }
 
   Widget buildStatus(int number) {
     return Container(
@@ -66,30 +119,20 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                   DataColumn(label: Text("Date Submitted", style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
-                rows: [
-                  _buildRow("Mark Reyes", "₱50,000",
-                      "Personal Loan", "Oct 20, 2025"),
-                  _buildRow("Jane Smith", "₱50,000", "Home Loan",
-                      "Oct 20, 2025"),
-                  _buildRow("Juan Dela Cruz", "₱50,000",
-                      "Personal Loan", "Oct 20, 2025"),
-                  _buildRow("Anne Mendoza", "₱50,000", "Home Loan",
-                      "Oct 20, 2025"),
-                  _buildRow("Randy Villanueva", "₱40,000",
-                      "Personal Loan", "Oct 20, 2025"),
-                  _buildRow("John Doe", "₱50,000", "Personal Loan",
-                      "Oct 21, 2025"),
-                ],
+                rows: loans.map((loan) {
+                  final applicant = "${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}";
+                  final amount = '₱${loan['loan_amount'] ?? 0}';
+                  final type = loan['reason'] ?? 'N/A';
+                  final date = formatDate(loan['created_at']);
+                  return _buildRow(applicant, amount, type, date);
+                }).toList(), //rows logic
               ),
             );
-            
           }
         ),
       ),
     );
   }
-
-
 
 
   @override
