@@ -13,9 +13,15 @@ class EncoderPaymentForm extends StatefulWidget {
 class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
   
   // Payment Information
+  String? selectedPaymentMethod;
   final TextEditingController amountPaidController = TextEditingController();
-  final TextEditingController loanRefController = TextEditingController();
   final TextEditingController paymentDateController = TextEditingController();
+
+  // Payment Information
+  final TextEditingController staffController = TextEditingController();
+  final TextEditingController refNoController = TextEditingController();
+  final TextEditingController receiptController = TextEditingController();
+  final TextEditingController bankNameController = TextEditingController();
   
   // Member Information
   final TextEditingController memberNameController = TextEditingController();
@@ -63,35 +69,150 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         ),
         SizedBox(height: 16),
 
-        // Amount Paid (full width)
-        NumberInputField(
-          label: "Amount Paid",
-          controller: amountPaidController,
-          hint: "₱0"
+        // Payment Method Dropdown
+        SizedBox(
+          width: 250,
+          child: DropdownInputField(
+            label: "Payment Method", 
+            value: selectedPaymentMethod, 
+            items: [
+              "Cash",
+              "Gcash",
+              "Bank Transfer",
+            ],
+            onChanged: (value) {
+              setState(() {
+                selectedPaymentMethod = value;
+              });
+            },
+          ),
         ),
-        SizedBox(height: 16),
 
-        // Loan Reference Number & Date of Payment (side by side)
-        Row(
-          children: [
-            Expanded(
-              child: TextInputField(
-                label: "Loan Reference Number",
-                controller: loanRefController,
-                hint: "",
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: DateInputField(
-                label: "Date of Payment",
-                controller: paymentDateController,
-              ),
-            ),
-          ],
-        ),
+        // Payment Fields
+        SizedBox(height: 16),
+        ...paymentMethodSpecificFields(selectedPaymentMethod ?? ""),
       ],
     );
+  }
+
+  List<Widget> paymentMethodSpecificFields(String method) {
+    switch (method) {
+      case "Cash":
+        return [
+          Row(
+            children: [
+              Expanded(
+                child: NumberInputField(
+                  label: "Amount Paid",
+                  controller: amountPaidController,
+                  hint: "₱0"
+                ),
+              ),              
+              SizedBox(width: 16),
+
+              Expanded(
+                child: DateInputField(
+                  label: "Date of Payment",
+                  controller: paymentDateController,
+                ),
+              ),
+              SizedBox(width: 16),
+
+              Expanded(
+                child: TextInputField(
+                  label: "Staff Handling Payment",
+                  controller: staffController,
+                  hint: "e.g. John Doe",
+                ),
+              ),
+            ],
+          ),
+        ];
+
+
+
+      case "Gcash":
+        return [
+          Row(
+            children: [
+              Expanded(
+                child: NumberInputField(
+                  label: "Amount Paid",
+                  controller: amountPaidController,
+                  hint: "₱0"
+                ),
+              ),              
+              SizedBox(width: 16),
+
+              Expanded(
+                child: TextInputField(
+                  label: "Reference Number", 
+                  controller: refNoController,
+                  hint: "",
+                ),
+              ),
+              SizedBox(width: 16),
+              
+              Expanded(
+                child: FileUploadField(
+                  label: "Screenshot of Receipt", 
+                  hint: "Upload PNG or JPEG",
+                  fileName: receiptController.text,
+                  onTap: () async {
+                      final XFile? file = await _picker.pickImage(
+                        source: ImageSource.gallery,
+                      );
+                      
+                      if (file != null) {
+                        setState(() {
+                          proofOfPaymentFile = file;
+                        });
+                      }
+                    },
+                )
+              ),
+
+            ],
+          ),
+        ];
+
+
+
+      case "Bank Transfer":
+        return [
+          Row(
+            children: [
+              Expanded(
+                child: NumberInputField(
+                  label: "Amount Paid",
+                  controller: amountPaidController,
+                  hint: "₱0"
+                ),
+              ),              
+              SizedBox(width: 16),
+
+              Expanded(
+                child: DateInputField(
+                  label: "Date of Bank Deposit",
+                  controller: paymentDateController,
+                ),
+              ),
+              SizedBox(width: 16),
+
+              Expanded(
+                child: TextInputField(
+                  label: "Bank Name",
+                  controller: bankNameController,
+                  hint: "e.g. BPI",
+                ),
+              )
+
+            ],
+          ),
+        ];
+      default:
+        return [];
+    }
   }
 
   Widget memberInfo() {
@@ -170,7 +291,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         children: [
 
           // top nav bar
-          const TopNavBar(splash: "Encoder"),
+          const TopNavBar(splash: "Member"),
 
           // main area
           Expanded(
@@ -179,7 +300,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
               children: [
 
                 // sidebar
-                const SideMenu(role: "Encoder"),
+                const SideMenu(role: "Member"),
 
                 // main content
                 Expanded(
@@ -376,6 +497,40 @@ class DateInputField extends StatelessWidget {
           controller.text = "$month-$day-$year";
         }
       },
+    );
+  }
+}
+
+class DropdownInputField extends StatelessWidget {
+  final String label;
+  final String? value;
+  final List<String> items;
+  final void Function(String?)? onChanged;
+
+  const DropdownInputField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      ),
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
+      onChanged: onChanged,
     );
   }
 }
