@@ -141,6 +141,14 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
+            leading: const Icon(Icons.receipt_long),
+            title: const Text("My Payments"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/member-payment-history');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
             leading: const Icon(CupertinoIcons.pencil),
             title: const Text("Apply for Loan"),
             onTap: () {

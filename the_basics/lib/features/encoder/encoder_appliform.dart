@@ -48,9 +48,7 @@ class _EncAppliformState extends State<EncAppliform> {
   final TextEditingController searchBDateController = TextEditingController();
   int? selectedMemberId;
   String? selectedMemberName;
-  String? staffSearchError; // small subtext when email belongs to staff
-
-  // (authService not required here since we query Supabase directly for staff/members)
+  String? staffSearchError;
 
 
   Widget buttonsRow() {
@@ -313,14 +311,13 @@ class _EncAppliformState extends State<EncAppliform> {
     );
   }
 
-  /// Navigate to the encoder member registration page and return the new member data
   Future<void> _navigateToCreateMember() async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(builder: (_) => const EncoderMemberRegisterPage()),
     );
 
     if (result != null && result['member_id'] != null) {
-      // Autofill all fields with the new member data
+      // autofill fields
       setState(() {
         selectedMemberId = result['member_id'];
         selectedMemberName = '${result['first_name']} ${result['last_name']}';
@@ -405,7 +402,7 @@ class _EncAppliformState extends State<EncAppliform> {
     try {
       await Supabase.instance.client.from('loan_application').insert(payload);
 
-      // show confirmation dialog, then refresh the page by replacing route with a new instance
+      // clear page after submission
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -423,7 +420,6 @@ class _EncAppliformState extends State<EncAppliform> {
       );
 
       if (!mounted) return;
-      // Replace current route with a fresh instance of the form to clear everything
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => EncAppliform()));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit application: $e')));
@@ -773,8 +769,8 @@ class _EncAppliformState extends State<EncAppliform> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  
-                                  // Member search (do this BEFORE entering loan fields)
+
+                                  // Member Search
                                   memberSearchSection(),
                                   SizedBox(height: 12),
 

@@ -28,13 +28,100 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
   // Member Information
   final TextEditingController memberNameController = TextEditingController();
   final TextEditingController memberIdController = TextEditingController();
-  final TextEditingController payerNameController = TextEditingController();
+  final TextEditingController memberSearchController = TextEditingController();
+  
+  // Auto-populated fields
+  int? selectedMemberId;
+  String? selectedMemberEmail; // Store member email for approved_loans query
+  int? currentEncoderStaffId;
+  String? currentEncoderName;
   
   // File upload
   final ImagePicker _picker = ImagePicker();
   XFile? proofOfPaymentFile;
   
   bool _isSubmitting = false;
+  bool _isSearching = false;
+  List<Map<String, dynamic>> memberSearchResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEncoderStaffId();
+  }
+
+  Future<void> _loadEncoderStaffId() async {
+    try {
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null) {
+        final staffRecord = await Supabase.instance.client
+            .from('staff')
+            .select('id, first_name, last_name')
+            .eq('email_address', currentUser.email!)
+            .maybeSingle();
+        
+        if (staffRecord != null) {
+          final firstName = staffRecord['first_name'] as String? ?? '';
+          final lastName = staffRecord['last_name'] as String? ?? '';
+          final fullName = '$firstName $lastName'.trim();
+          
+          setState(() {
+            currentEncoderStaffId = staffRecord['id'] as int;
+            currentEncoderName = fullName;
+            staffController.text = fullName; // Pre-fill the staff field
+          });
+          debugPrint('[EncoderPayment] Loaded encoder staff ID: $currentEncoderStaffId, Name: $fullName');
+        }
+      }
+    } catch (e) {
+      debugPrint('[EncoderPayment] Error loading encoder staff ID: $e');
+    }
+  }
+
+  Future<void> _searchMember(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        memberSearchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      debugPrint('[EncoderPayment] Searching for member: $query');
+      
+      // Search by ID or name
+      final results = await Supabase.instance.client
+          .from('members')
+          .select('id, first_name, last_name, email_address')
+          .or('id.eq.${int.tryParse(query) ?? -1},first_name.ilike.%$query%,last_name.ilike.%$query%')
+          .limit(10);
+
+      setState(() {
+        memberSearchResults = (results as List).cast<Map<String, dynamic>>();
+        _isSearching = false;
+      });
+      
+      debugPrint('[EncoderPayment] Found ${memberSearchResults.length} members');
+    } catch (e) {
+      debugPrint('[EncoderPayment] Error searching members: $e');
+      setState(() => _isSearching = false);
+    }
+  }
+
+  void _selectMember(Map<String, dynamic> member) {
+    setState(() {
+      selectedMemberId = member['id'] as int;
+      selectedMemberEmail = member['email_address'] as String?; // Store email for approved_loans query
+      memberIdController.text = selectedMemberId.toString();
+      memberNameController.text = '${member['first_name']} ${member['last_name']}';
+      memberSearchController.clear();
+      memberSearchResults = [];
+    });
+    debugPrint('[EncoderPayment] Selected member: ID=$selectedMemberId, Email=$selectedMemberEmail, Name=${memberNameController.text}');
+  }
 
 
   Widget buttonsRow() {
@@ -118,15 +205,6 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: DateInputField(
                   label: "Date of Payment",
                   controller: paymentDateController,
-                ),
-              ),
-              SizedBox(width: 16),
-
-              Expanded(
-                child: TextInputField(
-                  label: "Staff Handling Payment",
-                  controller: staffController,
-                  hint: "e.g. John Doe",
                 ),
               ),
             ],
@@ -229,55 +307,123 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         ),
         SizedBox(height: 16),
 
-        // Member Name & Member ID (side by side)
-        Row(
-          children: [
-            Expanded(
-              child: TextInputField(
-                label: "Member Name",
-                controller: memberNameController,
-                hint: "e.g. Mark Anthony",
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: TextInputField(
-                label: "Member ID",
-                controller: memberIdController,
-                hint: "",
-              ),
-            ),
-          ],
+        // Member Search Field
+        Text(
+          "Search Member",
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
+        SizedBox(height: 8),
+        TextField(
+          controller: memberSearchController,
+          decoration: InputDecoration(
+            hintText: "Enter member name or ID",
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            suffixIcon: _isSearching 
+                ? Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : Icon(Icons.search),
+          ),
+          onChanged: (value) {
+            _searchMember(value);
+          },
+        ),
+        
+        // Search Results Dropdown
+        if (memberSearchResults.isNotEmpty)
+          Container(
+            margin: EdgeInsets.only(top: 4),
+            constraints: BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: memberSearchResults.length,
+              itemBuilder: (context, index) {
+                final member = memberSearchResults[index];
+                return ListTile(
+                  dense: true,
+                  title: Text('${member['first_name']} ${member['last_name']}'),
+                  subtitle: Text('ID: ${member['id']} • ${member['email_address']}'),
+                  onTap: () => _selectMember(member),
+                  hoverColor: Colors.grey.shade100,
+                );
+              },
+            ),
+          ),
+
         SizedBox(height: 16),
 
-        // Payer Name & Proof of Payment (side by side)
+        // Member Name & Member ID (Read-only, auto-populated)
         Row(
           children: [
             Expanded(
-              child: TextInputField(
-                label: "Payer Name",
-                controller: payerNameController,
-                hint: "e.g. Mark Anthony",
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Member Name",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: memberNameController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      hintText: "Auto-populated from search",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(width: 16),
             Expanded(
-              child: FileUploadField(
-                label: "Proof of Payment",
-                hint: "Upload PNG or JPEG",
-                fileName: proofOfPaymentFile?.name,
-                onTap: () async {
-                  final XFile? file = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                  );
-                  
-                  if (file != null) {
-                    setState(() {
-                      proofOfPaymentFile = file;
-                    });
-                  }
-                },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Member ID",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: memberIdController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      hintText: "Auto-populated from search",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -295,7 +441,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         children: [
 
           // top nav bar
-          const TopNavBar(splash: "Member"),
+          const TopNavBar(splash: "Encoder"),
 
           // main area
           Expanded(
@@ -304,7 +450,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
               children: [
 
                 // sidebar
-                const SideMenu(role: "Member"),
+                const SideMenu(role: "Encoder"),
 
                 // main content
                 Expanded(
@@ -353,15 +499,14 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  
-                                  // Payment Information
-                                  paymentInfo(),                                    
-                                  SizedBox(height: 40),
 
                                   // Member Information
                                   memberInfo(),
                                   SizedBox(height: 18),
 
+                                  // Payment Information
+                                  paymentInfo(),                                    
+                                  SizedBox(height: 40),
 
                                   // Submit button
                                   Center( 
@@ -418,23 +563,23 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
     setState(() => _isSubmitting = true);
 
     try {
+      debugPrint('=== [EncoderPayment] Starting payment submission ===');
+      
       // Validation - Member Info
-      if (memberIdController.text.trim().isEmpty) {
-        _showError("Please enter the member ID");
+      if (selectedMemberId == null) {
+        _showError("Please search and select a member first");
         return;
       }
 
-      final memberId = int.tryParse(memberIdController.text.trim());
-      if (memberId == null) {
-        _showError("Invalid member ID");
-        return;
-      }
+      final memberId = selectedMemberId!;
+      debugPrint('[EncoderPayment] Target member ID: $memberId');
 
       // Validation - Payment Info
       if (selectedPaymentMethod == null) {
         _showError("Please select a payment method");
         return;
       }
+      debugPrint('[EncoderPayment] Payment method: $selectedPaymentMethod');
 
       final amountText = amountPaidController.text.trim();
       if (amountText.isEmpty) {
@@ -447,6 +592,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         _showError("Please enter a valid amount");
         return;
       }
+      debugPrint('[EncoderPayment] Payment amount: ₱$amount');
 
       // Method-specific validation
       if (selectedPaymentMethod == 'Cash') {
@@ -454,10 +600,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           _showError("Please enter the date of payment");
           return;
         }
-        if (staffController.text.trim().isEmpty) {
-          _showError("Please enter the staff handling payment");
-          return;
-        }
+        debugPrint('[EncoderPayment] Cash payment - date: ${paymentDateController.text}');
       } else if (selectedPaymentMethod == 'Gcash') {
         if (refNoController.text.trim().isEmpty) {
           _showError("Please enter the GCash reference number");
@@ -467,6 +610,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           _showError("Please upload screenshot of receipt");
           return;
         }
+        debugPrint('[EncoderPayment] GCash payment - ref: ${refNoController.text}');
       } else if (selectedPaymentMethod == 'Bank Transfer') {
         if (paymentDateController.text.trim().isEmpty) {
           _showError("Please enter the bank deposit date");
@@ -476,9 +620,11 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           _showError("Please enter the bank name");
           return;
         }
+        debugPrint('[EncoderPayment] Bank transfer - date: ${paymentDateController.text}, bank: ${bankNameController.text}');
       }
 
       // Verify member exists
+      debugPrint('[EncoderPayment] Verifying member exists with ID: $memberId');
       final memberRecord = await Supabase.instance.client
           .from('members')
           .select('id')
@@ -486,33 +632,68 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           .maybeSingle();
 
       if (memberRecord == null) {
+        debugPrint('[EncoderPayment] Member NOT FOUND with ID: $memberId');
         _showError("Member with ID $memberId not found");
         return;
       }
+      debugPrint('[EncoderPayment] ✓ Member verified');
 
-      // Fetch member's active approved loan from approved_loans (use application_id)
-      // Note: approved_loans.status uses 'active' not 'Approved'
+      // Fetch member's active approved loan from approved_loans
+      // For MEMBERS: RLS auto-filters approved_loans by their email (get_auth_email())
+      // For ENCODERS: We're authenticated as staff, so RLS may block. We query by member_id.
+      // If RLS blocks this, the DB admin needs to add a policy allowing staff to SELECT approved_loans
+      
+      debugPrint('[EncoderPayment] Querying approved_loans for member_id=$memberId with status=active');
       final loanRecord = await Supabase.instance.client
           .from('approved_loans')
-          .select('application_id, repayment_term, loan_amount')
+          .select('application_id, repayment_term, loan_amount, status, member_id, member_email')
           .eq('member_id', memberId)
           .eq('status', 'active')
           .maybeSingle();
 
+      debugPrint('[EncoderPayment] Loan query result: $loanRecord');
+
       if (loanRecord == null) {
-        _showError("No active approved loan found for member ID $memberId");
+        debugPrint('[EncoderPayment] ❌ NO ACTIVE APPROVED LOAN found for member_id=$memberId');
+        debugPrint('[EncoderPayment] This could be due to:');
+        debugPrint('[EncoderPayment]   1. Member has no active approved loan');
+        debugPrint('[EncoderPayment]   2. RLS policies blocking staff from reading approved_loans');
+        debugPrint('[EncoderPayment] Checking if ANY approved loans exist for this member (any status)...');
+        
+        final anyLoans = await Supabase.instance.client
+            .from('approved_loans')
+            .select('application_id, status, member_id, member_email')
+            .eq('member_id', memberId);
+        
+        debugPrint('[EncoderPayment] All approved loans for member_id=$memberId: $anyLoans');
+        
+        if (anyLoans.isEmpty) {
+          _showError("No approved loans found for member ID $memberId. Member may need to apply for a loan first.");
+        } else {
+          _showError("Member has loans but none are 'active'. Check loan statuses or contact admin about RLS policies.");
+        }
         return;
       }
 
-      final loanId = loanRecord['application_id'] as int;
+      final approvedLoanId = loanRecord['application_id'] as int;
+      final loanMemberId = loanRecord['member_id'] as int;
+      debugPrint('[EncoderPayment] ✓ Found active approved loan: application_id=$approvedLoanId, member_id=$loanMemberId, amount=${loanRecord['loan_amount']}, term=${loanRecord['repayment_term']}');
+      
+      // Verify the loan belongs to the selected member (sanity check)
+      if (loanMemberId != memberId) {
+        debugPrint('[EncoderPayment] ⚠️ WARNING: Loan member_id ($loanMemberId) does not match selected member_id ($memberId)');
+      }
 
       // Calculate installment number based on existing payments
+      // Note: DB trigger handles this automatically, but we'll query for verification
+      debugPrint('[EncoderPayment] Counting existing payments for approved_loan_id=$approvedLoanId');
       final existingPaymentsResp = await Supabase.instance.client
           .from('payments')
           .select('payment_id')
-          .eq('loan_id', loanId);
+          .eq('approved_loan_id', approvedLoanId);
 
       final installmentNumber = (existingPaymentsResp as List).length + 1;
+      debugPrint('[EncoderPayment] Existing payments count: ${(existingPaymentsResp as List).length}, next installment: $installmentNumber');
 
       // Parse payment date (for Cash and Bank Transfer)
       DateTime? paymentDate;
@@ -576,38 +757,18 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         }
       }
 
-      // Lookup staff ID for Cash payments or get current encoder's staff ID
-      int? staffId;
-      if (selectedPaymentMethod == 'Cash') {
-        final staffName = staffController.text.trim();
-        final staffRecord = await Supabase.instance.client
-            .from('staff')
-            .select('id')
-            .or('first_name.ilike.%$staffName%,last_name.ilike.%$staffName%')
-            .maybeSingle();
-        
-        if (staffRecord != null) {
-          staffId = staffRecord['id'] as int;
-        }
+      // Use current encoder's staff ID
+      final staffId = currentEncoderStaffId;
+      
+      if (staffId != null) {
+        debugPrint('[EncoderPayment] Using encoder staff ID: $staffId');
       } else {
-        // For non-cash, use current encoder's ID
-        final currentUser = Supabase.instance.client.auth.currentUser;
-        if (currentUser != null) {
-          final encoderRecord = await Supabase.instance.client
-              .from('staff')
-              .select('id')
-              .eq('email_address', currentUser.email!)
-              .maybeSingle();
-          
-          if (encoderRecord != null) {
-            staffId = encoderRecord['id'] as int;
-          }
-        }
+        debugPrint('[EncoderPayment] Warning: No staff ID available');
       }
 
       // Prepare payment payload
       final Map<String, dynamic> paymentPayload = {
-        'loan_id': loanId,
+        'approved_loan_id': approvedLoanId,
         'amount': amount,
         'installment_number': installmentNumber,
         'payment_type': selectedPaymentMethod,
@@ -616,28 +777,39 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
 
       if (staffId != null) {
         paymentPayload['staff_id'] = staffId;
+        debugPrint('[EncoderPayment] Added staff_id=$staffId to payload');
       }
 
       if (paymentDate != null) {
         paymentPayload['payment_date'] = paymentDate.toIso8601String();
+        debugPrint('[EncoderPayment] Added payment_date=${paymentDate.toIso8601String()}');
       }
 
       if (selectedPaymentMethod == 'Bank Transfer') {
         paymentPayload['bank_deposit_date'] = paymentDate?.toIso8601String();
         paymentPayload['bank_name'] = bankNameController.text.trim();
+        debugPrint('[EncoderPayment] Added bank transfer details');
       }
 
       if (selectedPaymentMethod == 'Gcash') {
         paymentPayload['gcash_reference'] = refNoController.text.trim();
         if (gcashScreenshotPath != null) {
           paymentPayload['gcash_screenshot_path'] = gcashScreenshotPath;
+          debugPrint('[EncoderPayment] Added GCash screenshot path: $gcashScreenshotPath');
         }
       }
 
       // Insert payment record
-      await Supabase.instance.client
+      debugPrint('[EncoderPayment] Inserting payment record into payments table...');
+      debugPrint('[EncoderPayment] Payload: $paymentPayload');
+      
+      final insertResult = await Supabase.instance.client
           .from('payments')
-          .insert(paymentPayload);
+          .insert(paymentPayload)
+          .select();
+      
+      debugPrint('[EncoderPayment] ✓ Payment inserted successfully: $insertResult');
+      debugPrint('=== [EncoderPayment] Payment submission completed ===');
 
       // Show success dialog
       if (!mounted) return;

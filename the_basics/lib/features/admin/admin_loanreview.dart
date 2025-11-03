@@ -77,7 +77,6 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
       }
     });
     
-    print("Fetched ${loans.length} total pending loans");
   } catch (e) {
     print('fetchLoans error: $e');
     if (mounted) {
