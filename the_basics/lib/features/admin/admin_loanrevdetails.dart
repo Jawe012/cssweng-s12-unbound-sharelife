@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/side_menu.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class LoanReviewDetailsPage extends StatefulWidget {
   const LoanReviewDetailsPage({super.key});
@@ -31,7 +33,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
 
   bool _isLoading = true;
 
-  String decision = 'Approved';
+  String? decision; // null means no decision selected yet
   String reason1 = 'Missing Documents';
   String reason2 = 'Incomplete Requirements';
   final TextEditingController remarksController = TextEditingController();
@@ -177,71 +179,88 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       if (staffRecord == null) throw Exception('Staff record not found');
       final staffId = staffRecord['id'] as int;
 
-      if (status == 'Approved') {
-        // APPROVAL FLOW
-        // 1. Fetch the full loan record from loan_application
-        final loanRecord = await Supabase.instance.client
-            .from('loan_application')
-            .select()
-            .eq('application_id', loanId)
-            .single();
+        if (status == 'Approved') {
+          // APPROVAL FLOW
+          // 1. Fetch the full loan record from loan_application
+          final loanRecord = await Supabase.instance.client
+              .from('loan_application')
+              .select()
+              .eq('application_id', loanId)
+              .single();
 
-        // 2. Prepare approved_loans payload
-        final approvedLoanPayload = {
-          'member_id': loanRecord['member_id'],
-          'installment': loanRecord['installment'],
-          'repayment_term': loanRecord['repayment_term'],
-          'status': 'Approved',
-          'approved_by': staffId,
-          'loan_amount': loanRecord['loan_amount'],
-          'annual_income': loanRecord['annual_income'],
-          'business_type': loanRecord['business_type'],
-          'reason': loanRecord['reason'],
-          'member_first_name': loanRecord['member_first_name'],
-          'member_last_name': loanRecord['member_last_name'],
-          'member_birth_date': loanRecord['member_birth_date'],
-          'comaker_spouse_first_name': loanRecord['comaker_spouse_first_name'],
-          'comaker_spouse_last_name': loanRecord['comaker_spouse_last_name'],
-          'comaker_child_first_name': loanRecord['comaker_child_first_name'],
-          'comaker_child_last_name': loanRecord['comaker_child_last_name'],
-          'member_email': loanRecord['member_email'],
-          'member_phone': loanRecord['member_phone'],
-          'address': loanRecord['address'],
-          'consent': loanRecord['consent'],
-        };
+          // 1a. Mark original loan_application as Accepted so the edge function can read it
+          await Supabase.instance.client
+              .from('loan_application')
+              .update({
+                'status': 'Approved',
+                'reviewed_by': staffId,
+                'date_reviewed': DateTime.now().toIso8601String(),
+                'remarks': remarksController.text,
+              })
+              .eq('application_id', loanId);
 
-        // 3. Insert into approved_loans
-        await Supabase.instance.client
-            .from('approved_loans')
-            .insert(approvedLoanPayload);
+          // 2. Notify via edge function
+          await _notifyLoanStatus(loanId);
 
-        // 4. Delete the original record from loan_application
-        await Supabase.instance.client
-            .from('loan_application')
-            .delete()
-            .eq('application_id', loanId);
+          // 3. Prepare approved_loans payload
+          final approvedLoanPayload = {
+            'member_id': loanRecord['member_id'],
+            'installment': loanRecord['installment'],
+            'repayment_term': loanRecord['repayment_term'],
+            'status': 'Approved',
+            'approved_by': staffId,
+            'loan_amount': loanRecord['loan_amount'],
+            'annual_income': loanRecord['annual_income'],
+            'business_type': loanRecord['business_type'],
+            'reason': loanRecord['reason'],
+            'member_first_name': loanRecord['member_first_name'],
+            'member_last_name': loanRecord['member_last_name'],
+            'member_birth_date': loanRecord['member_birth_date'],
+            'comaker_spouse_first_name': loanRecord['comaker_spouse_first_name'],
+            'comaker_spouse_last_name': loanRecord['comaker_spouse_last_name'],
+            'comaker_child_first_name': loanRecord['comaker_child_first_name'],
+            'comaker_child_last_name': loanRecord['comaker_child_last_name'],
+            'member_email': loanRecord['member_email'],
+            'member_phone': loanRecord['member_phone'],
+            'address': loanRecord['address'],
+            'consent': loanRecord['consent'],
+          };
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Loan approved and moved to approved_loans."))
-        );
+          // 4. Insert into approved_loans
+          await Supabase.instance.client
+              .from('approved_loans')
+              .insert(approvedLoanPayload);
 
-      } else if (status == 'Rejected') {
-        // REJECTION FLOW
-        // Update the loan_application table with rejection details
-        await Supabase.instance.client
-            .from('loan_application')
-            .update({
-              'status': 'Rejected',
-              'reviewed_by': staffId,
-              'date_reviewed': DateTime.now().toIso8601String(),
-              'remarks': remarksController.text,
-            })
-            .eq('application_id', loanId);
+          // 5. Delete the original record from loan_application
+          await Supabase.instance.client
+              .from('loan_application')
+              .delete()
+              .eq('application_id', loanId);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Loan rejected successfully."))
-        );
-      }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Loan approved and moved to approved_loans."))
+          );
+
+        } else if (status == 'Rejected') {
+          // REJECTION FLOW
+          // Update the loan_application table with rejection details
+          await Supabase.instance.client
+              .from('loan_application')
+              .update({
+                'status': 'Rejected',
+                'reviewed_by': staffId,
+                'date_reviewed': DateTime.now().toIso8601String(),
+                'remarks': remarksController.text,
+              })
+              .eq('application_id', loanId);
+
+          // Notify via edge function about rejection
+          await _notifyLoanStatus(loanId);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Loan rejected successfully."))
+          );
+        }
 
       Navigator.pop(context);
     } catch (e) {
@@ -255,6 +274,25 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   void dispose() {
     remarksController.dispose();
     super.dispose();
+  }
+
+  // Helper to call the deployed edge function to notify applicant by email
+  Future<void> _notifyLoanStatus(int loanId) async {
+    final url = Uri.parse('https://thgmovkioubrizajsvze.supabase.co/functions/v1/send-loan-status-email');
+    try {
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'loan_id': loanId}),
+      );
+      if (resp.statusCode != 200) {
+        debugPrint('[notifyLoanStatus] Function responded ${resp.statusCode}: ${resp.body}');
+      } else {
+        debugPrint('[notifyLoanStatus] Email notification sent for loan $loanId');
+      }
+    } catch (e) {
+      debugPrint('[notifyLoanStatus] Error calling edge function: $e');
+    }
   }
 
   int? _parseIntCandidate(dynamic candidate) {
@@ -447,17 +485,18 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             SizedBox(width: titleSpacing),
             DropdownButton<String>(
               value: decision,
+              hint: const Text('Choose'),
               items: [
-                DropdownMenuItem(
+                const DropdownMenuItem(
                     value: "Approved",
                     child: Text("Approve")),
-                DropdownMenuItem(
+                const DropdownMenuItem(
                     value: "Rejected",
                     child: Text("Reject")),
               ],
               onChanged: (value) {
                 setState(() {
-                  decision = value!;
+                  decision = value;
                 });
               },
             ),
@@ -481,13 +520,14 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 20),
-        // Single Confirm button
+        // Single Confirm button (disabled until a real decision is chosen)
         ElevatedButton(
-          onPressed: () => updateLoanStatus(decision),
+          onPressed: decision == null ? null : () => updateLoanStatus(decision!),
           style: ElevatedButton.styleFrom(
-            backgroundColor: decision == 'Approved' ? Colors.green : Colors.red,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 40, vertical: 16),
+            backgroundColor: decision == 'Approved'
+                ? Colors.green
+                : (decision == 'Rejected' ? Colors.red : Colors.grey),
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           ),
           child: const Text(
             "Confirm",
