@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/data/loan_data.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 class LoanReviewPage extends StatefulWidget {
   const LoanReviewPage({super.key});
@@ -35,33 +35,64 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
   bool isAscending = true;
   List<Map<String, dynamic>> loans = [];
   double buttonHeight = 28;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     fetchLoans();
+    
+    // Set up periodic refresh every 5 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      fetchLoans();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
  Future<void> fetchLoans() async {
   try {
-    final resp = await Supabase.instance.client
+    // Fetch from loan_application table - only Pending or null status
+    final loanAppResp = await Supabase.instance.client
         .from('loan_application')
         .select('application_id, member_first_name, member_last_name, loan_amount, reason, created_at, status')
-        .eq('status', 'Pending');
+        .or('status.eq.Pending,status.is.null');
+
+    // Fetch from temporary_loan_information table - only Pending or null status
+    final tempLoanResp = await Supabase.instance.client
+        .from('temporary_loan_information')
+        .select('temp_loan_id, member_first_name, member_last_name, loan_amount, reason, created_at, status')
+        .or('status.eq.Pending,status.is.null');
 
     if (!mounted) return;
 
     setState(() {
-      // Convert the response directly to List<Map<String, dynamic>>
-      if (resp is List) {
-        loans = List<Map<String, dynamic>>.from(resp);
-      } else {
-        // Handle empty or invalid response
-        loans = [];
+      loans = [];
+      
+      // Add loans from loan_application table
+      for (var loan in loanAppResp) {
+        // Normalize the ID field to 'id' for consistent handling
+        final normalizedLoan = Map<String, dynamic>.from(loan);
+        normalizedLoan['id'] = loan['application_id'];
+        normalizedLoan['source'] = 'loan_application';
+        loans.add(normalizedLoan);
+      }
+      
+      // Add loans from temporary_loan_information table
+      for (var loan in tempLoanResp) {
+        // Normalize the ID field to 'id' for consistent handling
+        final normalizedLoan = Map<String, dynamic>.from(loan);
+        normalizedLoan['id'] = loan['temp_loan_id'];
+        normalizedLoan['source'] = 'temporary_loan_information';
+        loans.add(normalizedLoan);
       }
     });
     
-    print("Fetched loans: $resp");
+    print("Fetched ${loans.length} total pending loans (from both tables)");
   } catch (e) {
     print('fetchLoans error: $e');
     if (mounted) {
@@ -120,11 +151,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                   DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
                 rows: loans.map((loan) {
-                  final applicant = "${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}";
-                  final amount = '₱${loan['loan_amount'] ?? 0}';
-                  final type = loan['reason'] ?? 'N/A';
-                  final date = formatDate(loan['created_at']);
-                  return _buildRow(applicant, amount, type, date);
+                  return _buildRow(loan);
                 }).toList(), //rows logic
               ),
             );
@@ -183,7 +210,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              buildStatus(5),
+                              buildStatus(loans.length),
                             ],
                           ),
 
@@ -207,7 +234,12 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
     );
   }
 
-  DataRow _buildRow(String applicant, String amount, String type, String date) {
+  DataRow _buildRow(Map<String, dynamic> loan) {
+    final applicant = "${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}";
+    final amount = '₱${loan['loan_amount'] ?? 0}';
+    final type = loan['reason'] ?? 'N/A';
+    final date = formatDate(loan['created_at']);
+
     return DataRow(cells: [
       DataCell(Text(applicant)),
       DataCell(Text(amount)),
@@ -215,17 +247,17 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
       DataCell(Text(date)),
       DataCell(ElevatedButton(
         onPressed: () {
-          Navigator.pushNamed(context, '/admin-loanrevdetails');
+          Navigator.pushNamed(
+            context,
+            '/admin-loanrevdetails',
+            arguments: loan['id'], // pass the normalized ID
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: 
-          Text(
-            "Review",
-            style: TextStyle(color: Colors.white)),
+        child: Text("Review", style: TextStyle(color: Colors.white)),
       )),
     ]);
   }

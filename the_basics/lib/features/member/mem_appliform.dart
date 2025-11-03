@@ -183,13 +183,30 @@ class _MemAppliformState extends State<MemAppliform> {
   final supabase = Supabase.instance.client;
 
   try {
-    final response = await supabase
+    await supabase
         .from('loan_application')
         .insert(application.toJson());
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Application submitted successfully!"))
+    // Show confirmation dialog, then refresh the page by replacing route with a new instance
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Loan Application Submitted'),
+        content: const Text('The application has been submitted successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
+
+    if (!mounted) return;
+    // Replace current route with a fresh instance of the form to clear everything
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => MemAppliform()));
   } catch (e) {
     print("Submission error: $e");
     ScaffoldMessenger.of(context).showSnackBar(

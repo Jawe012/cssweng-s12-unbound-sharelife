@@ -30,8 +30,9 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   String address = '';
 
   bool _isLoading = true;
+  String _sourceTable = 'loan_application'; // Track which table the loan came from
 
-  String decision = 'Approve';
+  String decision = 'Approved';
   String reason1 = 'Missing Documents';
   String reason2 = 'Incomplete Requirements';
   final TextEditingController remarksController = TextEditingController();
@@ -60,17 +61,37 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   //getting loan details
   Future<void> fetchLoanDetails(int id) async {
     setState(() => _isLoading = true);
+    
+    Map<String, dynamic>? response;
+    String sourceTable = 'loan_application';
+    
     try {
-      final response = await Supabase.instance.client
+      // Try loan_application first
+      response = await Supabase.instance.client
           .from('loan_application')
           .select()
           .eq('application_id', id)
           .maybeSingle();
+      
+      // If not found in loan_application, try temporary_loan_information
+      if (response == null) {
+        response = await Supabase.instance.client
+            .from('temporary_loan_information')
+            .select()
+            .eq('temp_loan_id', id)
+            .maybeSingle();
+        
+        if (response != null) {
+          sourceTable = 'temporary_loan_information';
+        }
+      }
 
       if (response != null) {
         setState(() {
+          _sourceTable = sourceTable; // Track which table this loan came from
+          
           // Loan Info
-          loanAmount = response['loan_amount'] ?? 0;
+          loanAmount = response!['loan_amount'] ?? 0;
           annualIncome = response['annual_income'] ?? 0;
           installment = response['installment'] ?? '';
           repaymentTerm = response['repayment_term'] ?? '';
@@ -98,6 +119,11 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           
           _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Loan application not found in either table'))
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -105,6 +131,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
         SnackBar(content: Text('Error loading loan details: $e'))
       );
     }
+    
   }
 
   @override
@@ -113,9 +140,31 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
     super.initState();
     // Defer accessing ModalRoute.of(context) until after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final loanId = ModalRoute.of(context)?.settings.arguments as int?;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      int? loanId;
+
+      // Debug log the raw args for troubleshooting
+      print('[LoanDetails] route args: $args (${args.runtimeType})');
+
+      // Accept either an int id or a Map (loan) with application_id
+      if (args is int) {
+        loanId = args;
+      } else if (args is Map) {
+        // Try several common key names for id
+        final candidate = args['application_id'] ?? args['id'] ?? args['applicationId'] ?? args['loan_id'];
+        print('[LoanDetails] candidate id value: $candidate (${candidate.runtimeType})');
+        loanId = _parseIntCandidate(candidate);
+      }
+
       if (loanId != null) {
+        print('[LoanDetails] resolved loanId: $loanId');
         fetchLoanDetails(loanId);
+      } else {
+        // No valid id provided — stop loading and show a friendly message
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No application id provided to details page')),
+        );
       }
     });
   }
@@ -123,23 +172,100 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   //changing the status
   Future<void> updateLoanStatus(String status) async {
     try {
-      final loanId = ModalRoute.of(context)?.settings.arguments as int?;
-      if (loanId == null) {
-        throw Exception('No loan ID provided');
+      final args = ModalRoute.of(context)?.settings.arguments;
+      int? loanId;
+      if (args is int) loanId = args;
+      else if (args is Map) {
+        final candidate = args['application_id'] ?? args['id'] ?? args['applicationId'] ?? args['loan_id'];
+        loanId = _parseIntCandidate(candidate);
       }
 
-      await Supabase.instance.client
-          .from('loan_application')
-          .update({
-            'status': status,
-            'admin_remarks': remarksController.text,
-            'approved_by': Supabase.instance.client.auth.currentUser?.id,
-          })
-          .eq('application_id', loanId);
+      if (loanId == null) throw Exception('No loan ID provided');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Loan $status successfully."))
-      );
+      // Get current staff ID for reviewed_by/approved_by
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser == null) throw Exception('No authenticated user');
+      
+      // Fetch staff ID from staff table using email
+      final staffRecord = await Supabase.instance.client
+          .from('staff')
+          .select('id')
+          .eq('email_address', currentUser.email!)
+          .maybeSingle();
+      
+      if (staffRecord == null) throw Exception('Staff record not found');
+      final staffId = staffRecord['id'] as int;
+
+      // Determine the ID column name based on source table
+      final idColumn = _sourceTable == 'temporary_loan_information' 
+          ? 'temp_loan_id' 
+          : 'application_id';
+
+      if (status == 'Approved') {
+        // APPROVAL FLOW
+        // 1. Fetch the full loan record from source table
+        final loanRecord = await Supabase.instance.client
+            .from(_sourceTable)
+            .select()
+            .eq(idColumn, loanId)
+            .single();
+
+        // 2. Prepare approved_loans payload
+        final approvedLoanPayload = {
+          'member_id': loanRecord['member_id'],
+          'installment': loanRecord['installment'],
+          'repayment_term': loanRecord['repayment_term'],
+          'status': 'Approved',
+          'approved_by': staffId,
+          'loan_amount': loanRecord['loan_amount'],
+          'annual_income': loanRecord['annual_income'],
+          'business_type': loanRecord['business_type'],
+          'reason': loanRecord['reason'],
+          'member_first_name': loanRecord['member_first_name'],
+          'member_last_name': loanRecord['member_last_name'],
+          'member_birth_date': loanRecord['member_birth_date'],
+          'comaker_spouse_first_name': loanRecord['comaker_spouse_first_name'],
+          'comaker_spouse_last_name': loanRecord['comaker_spouse_last_name'],
+          'comaker_child_first_name': loanRecord['comaker_child_first_name'],
+          'comaker_child_last_name': loanRecord['comaker_child_last_name'],
+          'member_email': loanRecord['member_email'],
+          'member_phone': loanRecord['member_phone'],
+          'address': loanRecord['address'],
+          'consent': loanRecord['consent'],
+        };
+
+        // 3. Insert into approved_loans
+        await Supabase.instance.client
+            .from('approved_loans')
+            .insert(approvedLoanPayload);
+
+        // 4. Delete the original record from source table
+        await Supabase.instance.client
+            .from(_sourceTable)
+            .delete()
+            .eq(idColumn, loanId);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Loan approved and moved to approved_loans."))
+        );
+
+      } else if (status == 'Rejected') {
+        // REJECTION FLOW
+        // Update the source table with rejection details
+        await Supabase.instance.client
+            .from(_sourceTable)
+            .update({
+              'status': 'Rejected',
+              'reviewed_by': staffId,
+              'date_reviewed': DateTime.now().toIso8601String(),
+              'remarks': remarksController.text,
+            })
+            .eq(idColumn, loanId);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Loan rejected successfully."))
+        );
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -153,6 +279,21 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   void dispose() {
     remarksController.dispose();
     super.dispose();
+  }
+
+  int? _parseIntCandidate(dynamic candidate) {
+    if (candidate == null) return null;
+    if (candidate is int) return candidate;
+    if (candidate is num) return candidate.toInt();
+    if (candidate is String) {
+      return int.tryParse(candidate);
+    }
+    if (candidate is Map) {
+      // try common nested keys
+      final v = candidate['value'] ?? candidate['id'] ?? candidate['application_id'];
+      return _parseIntCandidate(v);
+    }
+    return null;
   }
 
   Widget loanInfo(double loanAmt, double annualInc, int installments,
@@ -332,10 +473,10 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
               value: decision,
               items: [
                 DropdownMenuItem(
-                    value: "Approve",
+                    value: "Approved",
                     child: Text("Approve")),
                 DropdownMenuItem(
-                    value: "Reject",
+                    value: "Rejected",
                     child: Text("Reject")),
               ],
               onChanged: (value) {
@@ -364,40 +505,20 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 20),
-      ],
-    );
-  }
-
-  Widget buttonsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
+        // Single Confirm button
         ElevatedButton(
-          onPressed: () => updateLoanStatus('Approved'),
+          onPressed: () => updateLoanStatus(decision),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
+            backgroundColor: decision == 'Approved' ? Colors.green : Colors.red,
             padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 12),
+                horizontal: 40, vertical: 16),
           ),
           child: const Text(
-            "Approve",
-            style: TextStyle(color: Colors.white),
+            "Confirm",
+            style: TextStyle(color: Colors.white, fontSize: 16),
           ),
         ),
-        const SizedBox(width: 16),
-        ElevatedButton(
-          onPressed: () => updateLoanStatus('Rejected'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 12),
-          ),
-          child: const Text(
-            "Reject",
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-        const Spacer(),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -447,7 +568,6 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                               ),
                               Divider(),
                               decisionSection(),
-                              buttonsRow(),
                             ],
                           ),
                         ),
