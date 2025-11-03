@@ -382,7 +382,6 @@ class _EncAppliformState extends State<EncAppliform> {
 
     final payload = {
       'member_id': selectedMemberId,
-      'encoded_by': staffId,
       'installment': instController.text,
       'repayment_term': termController.text,
       'loan_amount': int.tryParse(loanAmtController.text) ?? 0,
@@ -403,7 +402,7 @@ class _EncAppliformState extends State<EncAppliform> {
     };
 
     try {
-      await Supabase.instance.client.from('temporary_loan_information').insert(payload);
+      await Supabase.instance.client.from('loan_application').insert(payload);
 
       // show confirmation dialog, then refresh the page by replacing route with a new instance
       if (!mounted) return;

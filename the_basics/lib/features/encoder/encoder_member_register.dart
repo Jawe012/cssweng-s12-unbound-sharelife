@@ -24,9 +24,12 @@ class _EncoderMemberRegisterPageState extends State<EncoderMemberRegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _recognitionDateController = TextEditingController();
 
   bool _showConfirmPassword = false;
   bool _isProcessing = false;
+  String _status = 'active'; // default to active
+  bool _hasLoan = false; // default to no loan
 
   @override
   void initState() {
@@ -49,6 +52,7 @@ class _EncoderMemberRegisterPageState extends State<EncoderMemberRegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _recognitionDateController.dispose();
     super.dispose();
   }
 
@@ -128,6 +132,21 @@ class _EncoderMemberRegisterPageState extends State<EncoderMemberRegisterPage> {
     // Step 1: Insert member record directly into the members table
     int? newMemberId;
     try {
+      // Parse recognition date to ISO format if provided
+      String? recognitionDateIso;
+      final recognitionDate = _recognitionDateController.text.trim();
+      if (recognitionDate.isNotEmpty) {
+        try {
+          final parts = recognitionDate.split('/');
+          if (parts.length == 3) {
+            final month = int.parse(parts[0]);
+            final day = int.parse(parts[1]);
+            final year = int.parse(parts[2]);
+            recognitionDateIso = DateTime(year, month, day).toIso8601String().split('T')[0];
+          }
+        } catch (_) {}
+      }
+
       final memberPayload = {
         'email_address': email,
         'username': username,
@@ -135,8 +154,14 @@ class _EncoderMemberRegisterPageState extends State<EncoderMemberRegisterPage> {
         'last_name': lastName,
         'date_of_birth': dobIso,
         'contact_no': contactNo,
-        'role': 'member',
+        'status': _status,
+        'has_loan': _hasLoan,
       };
+
+      // Only add recognition_date if it's provided
+      if (recognitionDateIso != null) {
+        memberPayload['recognition_date'] = recognitionDateIso;
+      }
 
       final insertedMember = await Supabase.instance.client
           .from('members')
@@ -349,6 +374,77 @@ class _EncoderMemberRegisterPageState extends State<EncoderMemberRegisterPage> {
                         ],
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                // Additional Member Information
+                const Text(
+                  'Additional Information',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _recognitionDateController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Recognition Date (Optional)',
+                          border: OutlineInputBorder(),
+                          hintText: 'MM/DD/YYYY',
+                          helperText: 'Date of 1st loan',
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        onTap: () async {
+                          // Open date picker and write selected date as MM/DD/YYYY
+                          final now = DateTime.now();
+                          DateTime initialDate = now;
+                          try {
+                            // try to parse existing value to set as initial date
+                            final parts = _recognitionDateController.text.split('/');
+                            if (parts.length == 3) {
+                              final month = int.parse(parts[0]);
+                              final day = int.parse(parts[1]);
+                              final year = int.parse(parts[2]);
+                              initialDate = DateTime(year, month, day);
+                            }
+                          } catch (_) {}
+
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: initialDate,
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                          );
+
+                          if (picked != null) {
+                            final formatted = '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
+                            setState(() {
+                              _recognitionDateController.text = formatted;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _hasLoan,
+                      onChanged: (value) {
+                        setState(() {
+                          _hasLoan = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text('Has an active loan'),
                   ],
                 ),
                 const SizedBox(height: 30),

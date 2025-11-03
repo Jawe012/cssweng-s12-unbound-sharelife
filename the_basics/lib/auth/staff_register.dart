@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/auth/auth_service.dart';
 import 'package:the_basics/widgets/auth_navbar.dart';
-import 'package:the_basics/utils/profile_storage.dart';
-import 'package:the_basics/main.dart';
+// removed unused imports
 
 class StaffRegisterPage extends StatefulWidget {
   const StaffRegisterPage({super.key});
@@ -108,7 +107,7 @@ class _StaffRegisterPageState extends State<StaffRegisterPage> {
 
     try {
       // Use new staffSignUp so we reuse pending-profile flow (no edge function)
-      final response = await authService.staffSignUp(
+      await authService.staffSignUp(
         email,
         password,
         username: username,
@@ -200,11 +199,40 @@ class _StaffRegisterPageState extends State<StaffRegisterPage> {
                         
                         TextField(
                           controller: _dateOfBirthController,
+                          readOnly: true,
                           decoration: InputDecoration(
                             labelText: 'Date of Birth',
                             border: OutlineInputBorder(),
                             hintText: 'MM/DD/YYYY',
+                            suffixIcon: Icon(Icons.calendar_today),
                           ),
+                          onTap: () async {
+                            final now = DateTime.now();
+                            DateTime initialDate = now;
+                            try {
+                              final parts = _dateOfBirthController.text.split('/');
+                              if (parts.length == 3) {
+                                final month = int.parse(parts[0]);
+                                final day = int.parse(parts[1]);
+                                final year = int.parse(parts[2]);
+                                initialDate = DateTime(year, month, day);
+                              }
+                            } catch (_) {}
+
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: initialDate,
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              final formatted = '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
+                              setState(() {
+                                _dateOfBirthController.text = formatted;
+                              });
+                            }
+                          },
                         ),
                         const SizedBox(height: 15),
                         

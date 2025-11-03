@@ -30,7 +30,6 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   String address = '';
 
   bool _isLoading = true;
-  String _sourceTable = 'loan_application'; // Track which table the loan came from
 
   String decision = 'Approved';
   String reason1 = 'Missing Documents';
@@ -62,36 +61,18 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   Future<void> fetchLoanDetails(int id) async {
     setState(() => _isLoading = true);
     
-    Map<String, dynamic>? response;
-    String sourceTable = 'loan_application';
-    
     try {
-      // Try loan_application first
-      response = await Supabase.instance.client
+      // Fetch from loan_application table
+      final response = await Supabase.instance.client
           .from('loan_application')
           .select()
           .eq('application_id', id)
           .maybeSingle();
-      
-      // If not found in loan_application, try temporary_loan_information
-      if (response == null) {
-        response = await Supabase.instance.client
-            .from('temporary_loan_information')
-            .select()
-            .eq('temp_loan_id', id)
-            .maybeSingle();
-        
-        if (response != null) {
-          sourceTable = 'temporary_loan_information';
-        }
-      }
 
       if (response != null) {
         setState(() {
-          _sourceTable = sourceTable; // Track which table this loan came from
-          
           // Loan Info
-          loanAmount = response!['loan_amount'] ?? 0;
+          loanAmount = response['loan_amount'] ?? 0;
           annualIncome = response['annual_income'] ?? 0;
           installment = response['installment'] ?? '';
           repaymentTerm = response['repayment_term'] ?? '';
@@ -122,7 +103,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       } else {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Loan application not found in either table'))
+          const SnackBar(content: Text('Loan application not found'))
         );
       }
     } catch (e) {
@@ -196,18 +177,13 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       if (staffRecord == null) throw Exception('Staff record not found');
       final staffId = staffRecord['id'] as int;
 
-      // Determine the ID column name based on source table
-      final idColumn = _sourceTable == 'temporary_loan_information' 
-          ? 'temp_loan_id' 
-          : 'application_id';
-
       if (status == 'Approved') {
         // APPROVAL FLOW
-        // 1. Fetch the full loan record from source table
+        // 1. Fetch the full loan record from loan_application
         final loanRecord = await Supabase.instance.client
-            .from(_sourceTable)
+            .from('loan_application')
             .select()
-            .eq(idColumn, loanId)
+            .eq('application_id', loanId)
             .single();
 
         // 2. Prepare approved_loans payload
@@ -239,11 +215,11 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             .from('approved_loans')
             .insert(approvedLoanPayload);
 
-        // 4. Delete the original record from source table
+        // 4. Delete the original record from loan_application
         await Supabase.instance.client
-            .from(_sourceTable)
+            .from('loan_application')
             .delete()
-            .eq(idColumn, loanId);
+            .eq('application_id', loanId);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Loan approved and moved to approved_loans."))
@@ -251,16 +227,16 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
 
       } else if (status == 'Rejected') {
         // REJECTION FLOW
-        // Update the source table with rejection details
+        // Update the loan_application table with rejection details
         await Supabase.instance.client
-            .from(_sourceTable)
+            .from('loan_application')
             .update({
               'status': 'Rejected',
               'reviewed_by': staffId,
               'date_reviewed': DateTime.now().toIso8601String(),
               'remarks': remarksController.text,
             })
-            .eq(idColumn, loanId);
+            .eq('application_id', loanId);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Loan rejected successfully."))
