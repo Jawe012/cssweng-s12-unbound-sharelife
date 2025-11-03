@@ -188,26 +188,14 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
               .eq('application_id', loanId)
               .single();
 
-          // 1a. Mark original loan_application as Accepted so the edge function can read it
-          await Supabase.instance.client
-              .from('loan_application')
-              .update({
-                'status': 'Approved',
-                'reviewed_by': staffId,
-                'date_reviewed': DateTime.now().toIso8601String(),
-                'remarks': remarksController.text,
-              })
-              .eq('application_id', loanId);
-
-          // 2. Notify via edge function
-          await _notifyLoanStatus(loanId);
-
-          // 3. Prepare approved_loans payload
+          // 2. Prepare approved_loans payload
+          // Note: loan_application.status only accepts 'Pending'/'Rejected'
+          // So we DON'T update it - we just move the record to approved_loans
           final approvedLoanPayload = {
             'member_id': loanRecord['member_id'],
             'installment': loanRecord['installment'],
             'repayment_term': loanRecord['repayment_term'],
-            'status': 'Approved',
+            'status': 'active', // approved_loans uses approved_loan_status enum: active, Paid, Overdue
             'approved_by': staffId,
             'loan_amount': loanRecord['loan_amount'],
             'annual_income': loanRecord['annual_income'],
@@ -226,16 +214,19 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             'consent': loanRecord['consent'],
           };
 
-          // 4. Insert into approved_loans
+          // 3. Insert into approved_loans
           await Supabase.instance.client
               .from('approved_loans')
               .insert(approvedLoanPayload);
 
-          // 5. Delete the original record from loan_application
+          // 4. Delete the original record from loan_application
           await Supabase.instance.client
               .from('loan_application')
               .delete()
               .eq('application_id', loanId);
+
+          // 5. Notify via edge function (pass the loanId for the email notification)
+          await _notifyLoanStatus(loanId);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Loan approved and moved to approved_loans."))
@@ -244,6 +235,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
         } else if (status == 'Rejected') {
           // REJECTION FLOW
           // Update the loan_application table with rejection details
+          // loan_application.status accepts: 'Pending' or 'Rejected' (lowercase)
           await Supabase.instance.client
               .from('loan_application')
               .update({

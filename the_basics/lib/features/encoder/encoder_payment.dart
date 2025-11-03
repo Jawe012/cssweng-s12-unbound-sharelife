@@ -490,12 +490,13 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         return;
       }
 
-      // Fetch member's active/approved loan from loan_application (use application_id)
+      // Fetch member's active approved loan from approved_loans (use application_id)
+      // Note: approved_loans.status uses 'active' not 'Approved'
       final loanRecord = await Supabase.instance.client
-          .from('loan_application')
+          .from('approved_loans')
           .select('application_id, repayment_term, loan_amount')
           .eq('member_id', memberId)
-          .eq('status', 'Approved')
+          .eq('status', 'active')
           .maybeSingle();
 
       if (loanRecord == null) {
