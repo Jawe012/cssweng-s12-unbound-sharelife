@@ -62,12 +62,6 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
         .select('application_id, member_first_name, member_last_name, loan_amount, reason, created_at, status')
         .or('status.eq.Pending,status.is.null');
 
-    // Fetch from temporary_loan_information table - only Pending or null status
-    final tempLoanResp = await Supabase.instance.client
-        .from('temporary_loan_information')
-        .select('temp_loan_id, member_first_name, member_last_name, loan_amount, reason, created_at, status')
-        .or('status.eq.Pending,status.is.null');
-
     if (!mounted) return;
 
     setState(() {
@@ -81,18 +75,9 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
         normalizedLoan['source'] = 'loan_application';
         loans.add(normalizedLoan);
       }
-      
-      // Add loans from temporary_loan_information table
-      for (var loan in tempLoanResp) {
-        // Normalize the ID field to 'id' for consistent handling
-        final normalizedLoan = Map<String, dynamic>.from(loan);
-        normalizedLoan['id'] = loan['temp_loan_id'];
-        normalizedLoan['source'] = 'temporary_loan_information';
-        loans.add(normalizedLoan);
-      }
     });
     
-    print("Fetched ${loans.length} total pending loans (from both tables)");
+    print("Fetched ${loans.length} total pending loans");
   } catch (e) {
     print('fetchLoans error: $e');
     if (mounted) {

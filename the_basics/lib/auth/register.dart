@@ -148,7 +148,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
 
     } on AuthException catch (authError) {
-      final errMsg = authError.message.toLowerCase() ?? '';
+  final errMsg = authError.message.toLowerCase();
       if (errMsg.contains('already registered') ||
           errMsg.contains('already exists') ||
           errMsg.contains('user already registered') ||
@@ -246,11 +246,40 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _dateOfBirthController,
+                          readOnly: true,
                           decoration: InputDecoration(
                             labelText: 'Date of Birth',
                             border: OutlineInputBorder(),
                             hintText: 'MM/DD/YYYY',
+                            suffixIcon: Icon(Icons.calendar_today),
                           ),
+                          onTap: () async {
+                            final now = DateTime.now();
+                            DateTime initialDate = now;
+                            try {
+                              final parts = _dateOfBirthController.text.split('/');
+                              if (parts.length == 3) {
+                                final month = int.parse(parts[0]);
+                                final day = int.parse(parts[1]);
+                                final year = int.parse(parts[2]);
+                                initialDate = DateTime(year, month, day);
+                              }
+                            } catch (_) {}
+
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: initialDate,
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              final formatted = '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
+                              setState(() {
+                                _dateOfBirthController.text = formatted;
+                              });
+                            }
+                          },
                         ),
                         const SizedBox(height: 15),
                         
