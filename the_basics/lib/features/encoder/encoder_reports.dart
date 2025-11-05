@@ -10,7 +10,7 @@ class EncoderReportsPage extends StatefulWidget {
 }
 
 class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late TabController tabController;
 
   final List<String> reportTypes = [
     'Loan Reports',
@@ -21,7 +21,7 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: reportTypes.length, vsync: this);
+    tabController = TabController(length: reportTypes.length, vsync: this);
   }
 
   @override
@@ -61,7 +61,7 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
 
                   // Tabs
                   TabBar(
-                    controller: _tabController,
+                    controller: tabController,
                     labelColor: Colors.black,
                     indicatorColor: Colors.blueAccent,
                     tabs: reportTypes.map((r) => Tab(text: r)).toList(),
@@ -72,11 +72,11 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
                   // Tab content
                   Expanded(
                     child: TabBarView(
-                      controller: _tabController,
+                      controller: tabController,
                       children: [
-                        _buildLoanReports(),
-                        _buildPaymentReports(),
-                        _buildMemberReports(),
+                        buildLoanReports(),
+                        buildPaymentReports(),
+                        buildMemberReports(),
                       ],
                     ),
                   ),
@@ -89,19 +89,19 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
     );
   }
 
-  Widget _buildLoanReports() {
-    return _buildReportTable("Loan Reports");
+  Widget buildLoanReports() {
+    return buildReportTable("Loan Reports");
   }
 
-  Widget _buildPaymentReports() {
-    return _buildReportTable("Payment Reports");
+  Widget buildPaymentReports() {
+    return buildReportTable("Payment Reports");
   }
 
-  Widget _buildMemberReports() {
-    return _buildReportTable("Member Reports");
+  Widget buildMemberReports() {
+    return buildReportTable("Member Reports");
   }
 
-  Widget _buildReportTable(String title) {
+  Widget buildReportTable(String title) {
     return Column(
       children: [
         Row(
