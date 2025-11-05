@@ -120,7 +120,9 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.bar_chart),
             title: const Text("Reports Dashboard"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-report');
+            },
           )
         ];
 
