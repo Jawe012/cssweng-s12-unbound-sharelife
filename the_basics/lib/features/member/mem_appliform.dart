@@ -152,7 +152,7 @@ class _MemAppliformState extends State<MemAppliform> {
   final memberRecord = await Supabase.instance.client
       .from('members')
       .select('id, first_name, last_name, date_of_birth')
-      .eq('email_address', email)
+      .eq('email_address', email.trim().toLowerCase())
       .maybeSingle();
 
   if (memberRecord == null || memberRecord['id'] == null) {
@@ -169,13 +169,56 @@ class _MemAppliformState extends State<MemAppliform> {
   return;
   }
 
+  // Parse database birth date
   final DateTime dbBirthDate = DateTime.parse(memberRecord['date_of_birth']);
-  final String formattedDbBirthDate = "${dbBirthDate.month}/${dbBirthDate.day}/${dbBirthDate.year}";
+  
+  // Normalize values for comparison (trim whitespace)
+  final dbFirstName = (memberRecord['first_name'] ?? '').toString().trim();
+  final dbLastName = (memberRecord['last_name'] ?? '').toString().trim();
+  final inputFirstName = fNameController.text.trim();
+  final inputLastName = lNameController.text.trim();
+  final inputBirthDateText = bDateController.text.trim();
 
-  if(memberRecord['first_name'] != fNameController.text ||
-     memberRecord['last_name'] != lNameController.text || formattedDbBirthDate != bDateController.text) {
+  // Parse input birth date - handle both MM-DD-YYYY and M/D/Y formats
+  DateTime? inputBirthDate;
+  try {
+    // Try parsing MM-DD-YYYY or M-D-Y format (with dashes)
+    final dashParts = inputBirthDateText.split('-');
+    if (dashParts.length == 3) {
+      final m = int.parse(dashParts[0]);
+      final d = int.parse(dashParts[1]);
+      final y = int.parse(dashParts[2]);
+      inputBirthDate = DateTime(y, m, d);
+    } else {
+      // Try parsing M/D/Y format (with slashes)
+      final slashParts = inputBirthDateText.split('/');
+      if (slashParts.length == 3) {
+        final m = int.parse(slashParts[0]);
+        final d = int.parse(slashParts[1]);
+        final y = int.parse(slashParts[2]);
+        inputBirthDate = DateTime(y, m, d);
+      }
+    }
+  } catch (e) {
+    print('Error parsing birth date: $e');
+  }
+
+  if (inputBirthDate == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Provided name does not match member records."))
+      SnackBar(content: Text("Invalid birth date format. Please enter a valid date."))
+    );
+    return;
+  }
+
+  // Compare dates by year, month, day
+  if(dbFirstName != inputFirstName ||
+     dbLastName != inputLastName || 
+     dbBirthDate.year != inputBirthDate.year ||
+     dbBirthDate.month != inputBirthDate.month ||
+     dbBirthDate.day != inputBirthDate.day) {
+    final formattedDbBirthDate = "${dbBirthDate.month}/${dbBirthDate.day}/${dbBirthDate.year}";
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Provided name does not match member records.\nExpected: $dbFirstName $dbLastName (DOB: $formattedDbBirthDate)"))
     );
     return;
   }
