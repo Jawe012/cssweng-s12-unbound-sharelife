@@ -10,6 +10,7 @@ import 'package:the_basics/features/admin/admin_loanrevdetails.dart';
 import 'package:the_basics/features/encoder/encoder_dashb.dart';
 import 'package:the_basics/features/encoder/encoder_appliform.dart';
 import 'package:the_basics/features/encoder/encoder_payment.dart';
+import 'package:the_basics/features/encoder/encoder_reports.dart';
 
 import 'package:the_basics/features/member/mem_dashb.dart';
 import 'package:the_basics/features/member/mem_appliform.dart';
@@ -114,6 +115,7 @@ class _MainAppState extends State<MainApp> {
         '/encoder-dash': (context) => EncoderDashboard(),
         '/encoder-appliform': (context) => EncAppliform(),
         '/encoder-payment': (context) => EncoderPaymentForm(),
+        '/encoder-report': (context) => EncoderReportsPage(),
         
         '/member-dash': (context) => MemberDB(),
         '/member-appliform': (context) => MemAppliform(),

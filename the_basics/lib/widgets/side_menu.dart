@@ -118,8 +118,8 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.supervisor_account),
-            title: const Text("Member Info"),
+            leading: const Icon(Icons.bar_chart),
+            title: const Text("Reports Dashboard"),
             onTap: () {},
           )
         ];
