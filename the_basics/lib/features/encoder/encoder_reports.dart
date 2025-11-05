@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
 import 'package:the_basics/widgets/side_menu.dart';
+import 'package:the_basics/widgets/top_navbar.dart';
 
 class EncoderReportsPage extends StatefulWidget {
   const EncoderReportsPage({super.key});
 
   @override
-  State<EncoderReportsPage> createState() => EncoderReportsPageState();
+  State<EncoderReportsPage> createState() => _EncoderReportsPageState();
 }
 
-class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTickerProviderStateMixin {
-  late TabController tabController;
+class _EncoderReportsPageState extends State<EncoderReportsPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   final List<String> reportTypes = [
     'Loan Reports',
@@ -21,12 +21,13 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
   @override
   void initState() {
     super.initState();
-    tabController = TabController(length: reportTypes.length, vsync: this);
+    _tabController = TabController(length: reportTypes.length, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFEFEFEF),
       drawer: const SideMenu(role: "Encoder"),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
@@ -60,11 +61,24 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
                   const SizedBox(height: 20),
 
                   // Tabs
-                  TabBar(
-                    controller: tabController,
-                    labelColor: Colors.black,
-                    indicatorColor: Colors.blueAccent,
-                    tabs: reportTypes.map((r) => Tab(text: r)).toList(),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.black,
+                      indicatorColor: Colors.blueAccent,
+                      tabs: reportTypes.map((r) => Tab(text: r)).toList(),
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -72,11 +86,11 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
                   // Tab content
                   Expanded(
                     child: TabBarView(
-                      controller: tabController,
+                      controller: _tabController,
                       children: [
-                        buildLoanReports(),
-                        buildPaymentReports(),
-                        buildMemberReports(),
+                        _buildReportContainer(_buildLoanReports()),
+                        _buildReportContainer(_buildPaymentReports()),
+                        _buildReportContainer(_buildMemberReports()),
                       ],
                     ),
                   ),
@@ -89,29 +103,53 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
     );
   }
 
-  Widget buildLoanReports() {
-    return buildReportTable("Loan Reports");
+  Widget _buildReportContainer(Widget content) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 6,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: content,
+    );
   }
 
-  Widget buildPaymentReports() {
-    return buildReportTable("Payment Reports");
+  Widget _buildLoanReports() {
+    return _buildReportTable("Loan Reports");
   }
 
-  Widget buildMemberReports() {
-    return buildReportTable("Member Reports");
+  Widget _buildPaymentReports() {
+    return _buildReportTable("Payment Reports");
   }
 
-  Widget buildReportTable(String title) {
+  Widget _buildMemberReports() {
+    return _buildReportTable("Member Reports");
+  }
+
+  Widget _buildReportTable(String title) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Filters Row
         Row(
           children: [
             Expanded(
               child: TextField(
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Search',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
@@ -129,9 +167,13 @@ class EncoderReportsPageState extends State<EncoderReportsPage> with SingleTicke
           ],
         ),
         const SizedBox(height: 20),
+
+        // Table
         Expanded(
           child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF5F5F5)),
               columns: const [
                 DataColumn(label: Text('Name')),
                 DataColumn(label: Text('Amount')),
