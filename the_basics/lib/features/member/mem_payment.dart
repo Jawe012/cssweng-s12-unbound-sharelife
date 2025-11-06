@@ -176,6 +176,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                       if (file != null) {
                         setState(() {
                           proofOfPaymentFile = file;
+                          receiptController.text = file.name; // Update controller to show filename
                         });
                       }
                     },
@@ -634,15 +635,16 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
       // Note: RLS policies automatically filter by user's email (member_email = get_auth_email())
       // So we don't need to filter by member_id - RLS does it for us
       debugPrint('[MemberPayment] Querying approved_loans with status=active (RLS filters by email automatically)');
-      final loanRecord = await Supabase.instance.client
+      
+      // Use .select() instead of .maybeSingle() to handle multiple active loans
+      final loanRecords = await Supabase.instance.client
           .from('approved_loans')
           .select('application_id, repayment_term, loan_amount, status, member_id')
-          .eq('status', 'active')
-          .maybeSingle();
+          .eq('status', 'active');
 
-      debugPrint('[MemberPayment] Loan query result: $loanRecord');
+      debugPrint('[MemberPayment] Loan query result: $loanRecords');
 
-      if (loanRecord == null) {
+      if ((loanRecords as List).isEmpty) {
         debugPrint('[MemberPayment] ❌ NO ACTIVE APPROVED LOAN found (after RLS filtering by email)');
         debugPrint('[MemberPayment] Checking if ANY approved loans exist for current user (any status)...');
         
@@ -656,6 +658,13 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
         return;
       }
 
+      // If multiple active loans, use the first one (or you could show a selection dialog)
+      final loanList = loanRecords as List;
+      if (loanList.length > 1) {
+        debugPrint('[MemberPayment] ⚠️ WARNING: Found ${loanList.length} active loans. Using the first one.');
+      }
+      
+      final loanRecord = loanList[0] as Map<String, dynamic>;
       final approvedLoanId = loanRecord['application_id'] as int;
       final loanMemberId = loanRecord['member_id'] as int;
       debugPrint('[MemberPayment] ✓ Found active approved loan: application_id=$approvedLoanId, member_id=$loanMemberId, amount=${loanRecord['loan_amount']}, term=${loanRecord['repayment_term']}');
@@ -696,47 +705,57 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
       // Handle GCash screenshot upload
       String? gcashScreenshotPath;
       if (selectedPaymentMethod == 'Gcash' && proofOfPaymentFile != null) {
-        final fileName = 'gcash_${DateTime.now().millisecondsSinceEpoch}_${proofOfPaymentFile!.name}';
+        // Get authenticated user ID
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId == null) {
+          _showError('User authentication required for file upload');
+          return;
+        }
+
+        // Sanitize filename: lowercase, replace spaces, remove special chars
+        String sanitizedFilename = proofOfPaymentFile!.name
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll(RegExp(r'[^a-z0-9._-]'), '');
+        
+        // Add timestamp to prevent collisions
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        
+        // Build path: USER_UUID/receipts/TIMESTAMP_filename.ext
+        final filePath = '$userId/receipts/${timestamp}_$sanitizedFilename';
+        
+        debugPrint('[MemberPayment] Uploading receipt to: $filePath');
+        
         final bytes = await proofOfPaymentFile!.readAsBytes();
 
         try {
-          // upload binary
+          // Upload binary to user-specific folder
           await Supabase.instance.client.storage
               .from('payment_receipts')
-              .uploadBinary(fileName, bytes);
+              .uploadBinary(filePath, bytes);
+
+          debugPrint('[MemberPayment] ✓ File uploaded successfully');
+          
+          // Store the path for database reference
+          gcashScreenshotPath = filePath;
 
           // Try to get public URL (works if bucket is public). Be defensive about return types.
           try {
-            final publicUrlRes = await Supabase.instance.client.storage
+            final publicUrlRes = Supabase.instance.client.storage
                 .from('payment_receipts')
-                .getPublicUrl(fileName);
-            String? publicUrl;
-            final resp = publicUrlRes as dynamic;
-            try {
-              if (resp is String) {
-                publicUrl = resp;
-              } else if (resp is Map) {
-                publicUrl = (resp['publicUrl'] ?? resp['publicURL'] ?? resp['public_url']) as String?;
-                if (publicUrl == null && resp['data'] != null) {
-                  final d = resp['data'];
-                  if (d is String) publicUrl = d;
-                  if (d is Map) publicUrl = (d['publicUrl'] ?? d['publicURL'] ?? d['public_url']) as String?;
-                }
-              }
-            } catch (_) {
-              // ignore parsing errors
+                .getPublicUrl(filePath);
+            
+            debugPrint('[MemberPayment] Public URL: $publicUrlRes');
+            // Store public URL if available, otherwise use path
+            if (publicUrlRes.isNotEmpty) {
+              gcashScreenshotPath = publicUrlRes;
             }
-
-            if (publicUrl != null && publicUrl.isNotEmpty) {
-              gcashScreenshotPath = publicUrl;
-            } else {
-              gcashScreenshotPath = fileName; // fallback
-            }
-          } catch (_) {
-            // fallback if getPublicUrl not available
-            gcashScreenshotPath = fileName;
+          } catch (e) {
+            debugPrint('[MemberPayment] Could not get public URL, using path instead: $e');
+            // Keep using filePath as fallback
           }
         } catch (e) {
+          debugPrint('[MemberPayment] Upload error details: $e');
           _showError('Failed to upload screenshot: $e');
           return;
         }

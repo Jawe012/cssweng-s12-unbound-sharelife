@@ -248,6 +248,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                       if (file != null) {
                         setState(() {
                           proofOfPaymentFile = file;
+                          receiptController.text = file.name; // Update controller to show filename
                         });
                       }
                     },
@@ -644,16 +645,17 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
       // If RLS blocks this, the DB admin needs to add a policy allowing staff to SELECT approved_loans
       
       debugPrint('[EncoderPayment] Querying approved_loans for member_id=$memberId with status=active');
-      final loanRecord = await Supabase.instance.client
+      
+      // Use .select() instead of .maybeSingle() to handle multiple active loans
+      final loanRecords = await Supabase.instance.client
           .from('approved_loans')
           .select('application_id, repayment_term, loan_amount, status, member_id, member_email')
           .eq('member_id', memberId)
-          .eq('status', 'active')
-          .maybeSingle();
+          .eq('status', 'active');
 
-      debugPrint('[EncoderPayment] Loan query result: $loanRecord');
+      debugPrint('[EncoderPayment] Loan query result: $loanRecords');
 
-      if (loanRecord == null) {
+      if ((loanRecords as List).isEmpty) {
         debugPrint('[EncoderPayment] ❌ NO ACTIVE APPROVED LOAN found for member_id=$memberId');
         debugPrint('[EncoderPayment] This could be due to:');
         debugPrint('[EncoderPayment]   1. Member has no active approved loan');
@@ -675,6 +677,13 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         return;
       }
 
+      // If multiple active loans, use the first one (or you could show a selection dialog)
+      final loanList = loanRecords as List;
+      if (loanList.length > 1) {
+        debugPrint('[EncoderPayment] ⚠️ WARNING: Found ${loanList.length} active loans for member_id=$memberId. Using the first one.');
+      }
+      
+      final loanRecord = loanList[0] as Map<String, dynamic>;
       final approvedLoanId = loanRecord['application_id'] as int;
       final loanMemberId = loanRecord['member_id'] as int;
       debugPrint('[EncoderPayment] ✓ Found active approved loan: application_id=$approvedLoanId, member_id=$loanMemberId, amount=${loanRecord['loan_amount']}, term=${loanRecord['repayment_term']}');
@@ -716,42 +725,57 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
       // Handle GCash screenshot upload
       String? gcashScreenshotPath;
       if (selectedPaymentMethod == 'Gcash' && proofOfPaymentFile != null) {
-        final fileName = 'gcash_${DateTime.now().millisecondsSinceEpoch}_${proofOfPaymentFile!.name}';
+        // Get authenticated user ID (the encoder/staff user uploading on behalf of member)
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId == null) {
+          _showError('User authentication required for file upload');
+          return;
+        }
+
+        // Sanitize filename: lowercase, replace spaces, remove special chars
+        String sanitizedFilename = proofOfPaymentFile!.name
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll(RegExp(r'[^a-z0-9._-]'), '');
+        
+        // Add timestamp to prevent collisions
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        
+        // Build path: USER_UUID/receipts/TIMESTAMP_filename.ext
+        final filePath = '$userId/receipts/${timestamp}_$sanitizedFilename';
+        
+        debugPrint('[EncoderPayment] Uploading receipt to: $filePath');
+        
         final bytes = await proofOfPaymentFile!.readAsBytes();
+        
         try {
+          // Upload binary to user-specific folder
           await Supabase.instance.client.storage
               .from('payment_receipts')
-              .uploadBinary(fileName, bytes);
+              .uploadBinary(filePath, bytes);
 
-          // Attempt to get public URL defensively
+          debugPrint('[EncoderPayment] ✓ File uploaded successfully');
+          
+          // Store the path for database reference
+          gcashScreenshotPath = filePath;
+
+          // Try to get public URL (works if bucket is public)
           try {
-            final publicUrlRes = await Supabase.instance.client.storage
+            final publicUrlRes = Supabase.instance.client.storage
                 .from('payment_receipts')
-                .getPublicUrl(fileName);
-            String? publicUrl;
-            final resp = publicUrlRes as dynamic;
-            try {
-              if (resp is String) {
-                publicUrl = resp;
-              } else if (resp is Map) {
-                publicUrl = (resp['publicUrl'] ?? resp['publicURL'] ?? resp['public_url']) as String?;
-                if (publicUrl == null && resp['data'] != null) {
-                  final d = resp['data'];
-                  if (d is String) publicUrl = d;
-                  if (d is Map) publicUrl = (d['publicUrl'] ?? d['publicURL'] ?? d['public_url']) as String?;
-                }
-              }
-            } catch (_) {}
-
-            if (publicUrl != null && publicUrl.isNotEmpty) {
-              gcashScreenshotPath = publicUrl;
-            } else {
-              gcashScreenshotPath = fileName;
+                .getPublicUrl(filePath);
+            
+            debugPrint('[EncoderPayment] Public URL: $publicUrlRes');
+            // Store public URL if available, otherwise use path
+            if (publicUrlRes.isNotEmpty) {
+              gcashScreenshotPath = publicUrlRes;
             }
-          } catch (_) {
-            gcashScreenshotPath = fileName;
+          } catch (e) {
+            debugPrint('[EncoderPayment] Could not get public URL, using path instead: $e');
+            // Keep using filePath as fallback
           }
         } catch (e) {
+          debugPrint('[EncoderPayment] Upload error details: $e');
           _showError('Failed to upload screenshot: $e');
           return;
         }
