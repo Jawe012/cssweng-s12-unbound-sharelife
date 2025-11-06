@@ -4,18 +4,21 @@ class TextInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String hint;
+  final String? Function(String?)? validator;
 
   const TextInputField({
     super.key,
     required this.label,
     required this.controller,
     this.hint = "",
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -30,12 +33,14 @@ class NumberInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String hint;
+  final String? Function(String?)? validator;
 
   const NumberInputField({
     super.key, 
     required this.label, 
     required this.controller, 
-    required this.hint
+    required this.hint,
+    this.validator,
   });
 
   @override
@@ -43,6 +48,7 @@ class NumberInputField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -56,14 +62,21 @@ class NumberInputField extends StatelessWidget {
 class DateInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final String? Function(String?)? validator;
 
-  const DateInputField({super.key, required this.label, required this.controller});
+  const DateInputField({
+    super.key, 
+    required this.label, 
+    required this.controller,
+    this.validator,
+  });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
       readOnly: true,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         hintText: "MM-DD-YYYY",
@@ -94,18 +107,21 @@ class DropdownInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final List<String> items;
+  final String? Function(String?)? validator;
 
   const DropdownInputField({
     super.key,
     required this.label,
     required this.controller,
     required this.items,
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       value: controller.text.isEmpty ? null : controller.text,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

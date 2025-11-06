@@ -85,6 +85,8 @@ class MemAppliform extends StatefulWidget {
 }
 
 class _MemAppliformState extends State<MemAppliform> {
+  // Form key for validation
+  final _formKey = GlobalKey<FormState>();
 
   final TextEditingController appliDateController = TextEditingController();
   
@@ -101,7 +103,7 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController lNameController = TextEditingController();
   final TextEditingController bDateController = TextEditingController();
   
-  // loan co-maker
+  // loan co-maker (OPTIONAL - nullable in schema)
   final TextEditingController spouseFNameController = TextEditingController();
   final TextEditingController spouseLNameController = TextEditingController();
   final TextEditingController childFNameController = TextEditingController();
@@ -114,6 +116,14 @@ class _MemAppliformState extends State<MemAppliform> {
   bool agreeTerms = false;
 
   Future<void> submitForm() async {
+  // Validate form fields first
+  if (!_formKey.currentState!.validate()) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Please fill in all required fields."))
+    );
+    return;
+  }
+
   // Validate consent
   if (!agreeTerms) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -127,14 +137,6 @@ class _MemAppliformState extends State<MemAppliform> {
   if (user == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("You must be logged in to submit an application."))
-    );
-    return;
-  }
-
-  // Basic validation for required fields
-  if (loanAmtController.text.isEmpty || emailController.text.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Please fill in all required fields."))
     );
     return;
   }
@@ -346,7 +348,16 @@ class _MemAppliformState extends State<MemAppliform> {
                 child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
-                hint: "₱0"
+                hint: "₱0",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  if (int.tryParse(value) == null) {
+                    return 'Must be a number';
+                  }
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -354,7 +365,16 @@ class _MemAppliformState extends State<MemAppliform> {
               child: NumberInputField(
                 label: "Annual Income",
                 controller: anlIncController,
-                hint: "₱0"
+                hint: "₱0",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  if (int.tryParse(value) == null) {
+                    return 'Must be a number';
+                  }
+                  return null;
+                },
               ),
             ),
           ],
@@ -373,6 +393,12 @@ class _MemAppliformState extends State<MemAppliform> {
                   "12 months",
                   "24 months",
                 ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -386,6 +412,12 @@ class _MemAppliformState extends State<MemAppliform> {
                   "Semi-Annually",
                   "Annually",
                 ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
               ),
             ),
           ],
@@ -404,13 +436,25 @@ class _MemAppliformState extends State<MemAppliform> {
                   "Corporation",
                   "Cooperative",
                 ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
             Expanded(
               child: TextInputField(
               label: "Reason", 
-              controller: reasonController
+              controller: reasonController,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Required';
+                }
+                return null;
+              },
               ),
             ),
           ],
@@ -437,6 +481,12 @@ class _MemAppliformState extends State<MemAppliform> {
             label: "First Name/s",
             controller: fNameController,
             hint: "e.g. Mark Anthony",
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
           ),
         ),
         SizedBox(width: 16),
@@ -445,6 +495,12 @@ class _MemAppliformState extends State<MemAppliform> {
             label: "Last Name",
             controller: lNameController,
             hint: "e.g. Garcia",
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
           ),
         ),
       ],
@@ -455,6 +511,12 @@ class _MemAppliformState extends State<MemAppliform> {
       child: DateInputField(
         label: "Birth Date",
         controller: bDateController,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Required';
+          }
+          return null;
+        },
       ),
     ),
       ],
@@ -529,6 +591,16 @@ class _MemAppliformState extends State<MemAppliform> {
                 label: "Email",
                 controller: emailController,
                 hint: "e.g. markanthony@email.com",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  // Basic email validation
+                  if (!value.contains('@')) {
+                    return 'Invalid email';
+                  }
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -537,6 +609,12 @@ class _MemAppliformState extends State<MemAppliform> {
                 label: "Phone Number",
                 controller: phoneNumController,
                 hint: "+63 912 345 6789",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
               ),
             ),
           ],
@@ -546,6 +624,12 @@ class _MemAppliformState extends State<MemAppliform> {
                 label: "Home Address",
                 controller: addrController,
                 hint: "e.g. Malate, Manila, Philippines",
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
         ),
       ],
     );
@@ -649,54 +733,57 @@ class _MemAppliformState extends State<MemAppliform> {
                             ),
 
                             // form content
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  
-                                  // Date of Application
-                                  appliDate(),                                    
-                                  SizedBox(height: 40),
+                            child: Form(
+                              key: _formKey,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    
+                                    // Date of Application
+                                    appliDate(),                                    
+                                    SizedBox(height: 40),
 
-                                  // Loan Information
-                                  loanInfo(),
-                                  SizedBox(height: 40),
-                                  
-                                  // Personal Information
-                                  personalInfo(),
-                                  SizedBox(height: 40),
+                                    // Loan Information
+                                    loanInfo(),
+                                    SizedBox(height: 40),
+                                    
+                                    // Personal Information
+                                    personalInfo(),
+                                    SizedBox(height: 40),
 
-                                  // Loan Co-maker
-                                  coMakers(),
-                                  SizedBox(height: 40),
+                                    // Loan Co-maker
+                                    coMakers(),
+                                    SizedBox(height: 40),
 
-                                  // Contact Information
-                                  contactInfo(),
-                                  SizedBox(height: 40),
+                                    // Contact Information
+                                    contactInfo(),
+                                    SizedBox(height: 40),
 
-                                  // Consent
-                                  consentForm(),
-                                  SizedBox(height: 18),
+                                    // Consent
+                                    consentForm(),
+                                    SizedBox(height: 18),
 
 
-                                  // Submit button
-                                  Center( 
-                                    child: ElevatedButton.icon(
-                                      onPressed: submitForm,
-                                      
-                                      label: const Text(
-                                        "Submit Application",
-                                        style: TextStyle(color: Colors.white),
+                                    // Submit button
+                                    Center( 
+                                      child: ElevatedButton.icon(
+                                        onPressed: submitForm,
+                                        
+                                        label: const Text(
+                                          "Submit Application",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                                          backgroundColor: Colors.black,
+                                          minimumSize: const Size(100, 28),
+                                        ),
                                       ),
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                                        backgroundColor: Colors.black,
-                                        minimumSize: const Size(100, 28),
-                                      ),
-                                    ),
-                                  )
+                                    )
 
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
 
