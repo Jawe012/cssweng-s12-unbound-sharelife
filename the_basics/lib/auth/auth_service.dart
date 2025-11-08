@@ -135,10 +135,10 @@ class AuthService {
       if (exists) {
         print('[staffSignUp] User already exists with that email/username: $email / $username');
         return Future.error('User already exists with that email/username');
-      } else if (password.length < 12) {
+      } else if (password.length < 6) {
         print('[staffSignUp] Password too short');
         return Future.error('Password must be at least 6 characters long');
-      } else if (passComplexity.hasMatch(password)) {
+      } else if (!passComplexity.hasMatch(password)) {
         print ('[staffSignUp] Password does not meet complexity requirements');
         return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
       } else {
@@ -192,10 +192,10 @@ class AuthService {
       if (exists) {
         print('[staffSignUp] User already exists with that email/username: $email / $username');
         return Future.error('User already exists with that email/username');
-      } else if (password.length < 12) {
+      } else if (password.length < 6) {
         print('[staffSignUp] Password too short');
         return Future.error('Password must be at least 6 characters long');
-      } else if (passComplexity.hasMatch(password)) {
+      } else if (!passComplexity.hasMatch(password)) {
         print ('[staffSignUp] Password does not meet complexity requirements');
         return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
       } else {
