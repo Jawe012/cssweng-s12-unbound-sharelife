@@ -73,14 +73,16 @@ class SideMenu extends StatelessWidget {
             leading: const Icon(Icons.receipt),
             title: const Text("Payment Form Review"),
             onTap: () {
-              // Navigator.pushReplacementNamed(context, '/admin-loanreview');
+              Navigator.pushReplacementNamed(context, '/admin-payment-review');
             },
           ),
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.folder),
             title: const Text("Loan & Payment Records"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/admin-records');
+            },
           ),
           SizedBox(height: 10),
           ListTile(
