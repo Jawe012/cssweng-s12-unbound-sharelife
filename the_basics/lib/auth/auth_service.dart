@@ -126,25 +126,49 @@ class AuthService {
     required String dateOfBirth,
     required String contactNo,
   }) async {
-    
-    // Save profile data locally before signup
-    await ProfileStorage.savePendingProfile({
-      'email': email.trim().toLowerCase(),
-      'username': username.trim(),
-      'first_name': firstName.trim(),
-      'last_name': lastName.trim(),
-      'date_of_birth': dateOfBirth.trim(),
-      'contact_no': contactNo.trim(),
-      'role': 'member', // mark as member so claim logic knows where to insert
-    });
+    try {
+      // Check if user already exists
+      final exists = await checkUserExists(email, username: username);
 
-    // Only do the auth signup - no members table insert yet
-    final response = await _supabase.auth.signUp(
-      email: email,
-      password: password,
-    );
+      RegExp passComplexity = RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+\$');
+      
+      if (exists) {
+        print('[staffSignUp] User already exists with that email/username: $email / $username');
+        return Future.error('User already exists with that email/username');
+      } else if (password.length < 12) {
+        print('[staffSignUp] Password too short');
+        return Future.error('Password must be at least 6 characters long');
+      } else if (passComplexity.hasMatch(password)) {
+        print ('[staffSignUp] Password does not meet complexity requirements');
+        return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
+      } else {
+        
+        // Save staff profile data locally before signup (include role)
+        print('[staffSignUp] Saving pending staff profile for: $email');
+        await ProfileStorage.savePendingProfile({
+          'email': email.trim().toLowerCase(),
+          'username': username.trim(),
+          'first_name': firstName.trim(),
+          'last_name': lastName.trim(),
+          'date_of_birth': dateOfBirth.trim(),
+          'contact_no': contactNo.trim(),
+          'role': 'member', // mark as member so claim logic knows where to insert
+        });
 
-    return response;
+        // Only do the auth signup - no members table insert yet
+        print('[staffSignUp] Calling Supabase signUp for: $email');
+        final response = await _supabase.auth.signUp(
+          email: email,
+          password: password,
+        );
+
+        print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
+        return response;
+      } 
+    } catch (e) {
+      print('[staffSignUp] Error checking existing user: $e');
+      return Future.error('Error checking existing user: $e');
+    }
   }
 
   // NEW: Staff sign up using same pending-profile flow as members
@@ -158,27 +182,50 @@ class AuthService {
     required String contactNo,
     String role = 'encoder',
   }) async {
-    // Save staff profile data locally before signup (include role)
-    print('[staffSignUp] Saving pending staff profile for: $email, role: $role');
-    await ProfileStorage.savePendingProfile({
-      'email': email.trim().toLowerCase(),
-      'username': username.trim(),
-      'first_name': firstName.trim(),
-      'last_name': lastName.trim(),
-      'date_of_birth': dateOfBirth.trim(),
-      'contact_no': contactNo.trim(),
-      'role': role.trim(), // important for claim step
-    });
 
-    // Use Supabase auth signUp (same as member flow)
-    print('[staffSignUp] Calling Supabase signUp for: $email');
-    final response = await _supabase.auth.signUp(
-      email: email,
-      password: password,
-    );
+    try {
+      // Check if user already exists
+      final exists = await checkUserExists(email, username: username);
 
-  print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
-    return response;
+      RegExp passComplexity = RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+\$');
+      
+      if (exists) {
+        print('[staffSignUp] User already exists with that email/username: $email / $username');
+        return Future.error('User already exists with that email/username');
+      } else if (password.length < 12) {
+        print('[staffSignUp] Password too short');
+        return Future.error('Password must be at least 6 characters long');
+      } else if (passComplexity.hasMatch(password)) {
+        print ('[staffSignUp] Password does not meet complexity requirements');
+        return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
+      } else {
+        // Save staff profile data locally before signup (include role)
+        print('[staffSignUp] Saving pending staff profile for: $email, role: $role');
+        await ProfileStorage.savePendingProfile({
+          'email': email.trim().toLowerCase(),
+          'username': username.trim(),
+          'first_name': firstName.trim(),
+          'last_name': lastName.trim(),
+          'date_of_birth': dateOfBirth.trim(),
+          'contact_no': contactNo.trim(),
+          'role': role.trim(), // important for claim step
+        });
+
+        // Use Supabase auth signUp (same as member flow)
+        print('[staffSignUp] Calling Supabase signUp for: $email');
+        final response = await _supabase.auth.signUp(
+          email: email,
+          password: password,
+        );
+
+        print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
+        return response;
+      }
+
+    } catch (e) {
+      print('[staffSignUp] Error checking existing user: $e');
+      return Future.error('Error checking existing user: $e');
+    }
   }
 
   // Claim pending profile after authentication
