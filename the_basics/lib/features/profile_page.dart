@@ -156,6 +156,21 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          
+                          Padding(
+                            padding: const EdgeInsets.only(left: 350.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [ IconButton(
+                                  icon: Icon(Icons.arrow_back),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                                Text("Back", style: TextStyle(fontSize: 18, color: Colors.black),),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 40),
                           _profileHeading("Mark Anthony", "Garcia", "Member"),
                           SizedBox(height: 80),
                           Row(

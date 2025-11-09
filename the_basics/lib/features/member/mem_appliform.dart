@@ -390,8 +390,6 @@ class _MemAppliformState extends State<MemAppliform> {
                 items: [
                   "3 months",
                   "6 months",
-                  "12 months",
-                  "24 months",
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -408,9 +406,7 @@ class _MemAppliformState extends State<MemAppliform> {
                 controller: termController,
                 items: [
                   "Monthly",
-                  "Quarterly",
-                  "Semi-Annually",
-                  "Annually",
+                  "Bimonthly",
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -427,15 +423,10 @@ class _MemAppliformState extends State<MemAppliform> {
         Row(
           children: [
             Expanded(
-              child: DropdownInputField(
+              child: TextInputField(
                 label: "Business Type",
                 controller: businessTypeController,
-                items: [
-                  "Sole Proprietorship",
-                  "Partnership",
-                  "Corporation",
-                  "Cooperative",
-                ],
+                hint: "e.g. Retail, Sari-sari store, etc.",
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Required';

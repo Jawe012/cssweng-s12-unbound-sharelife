@@ -42,12 +42,6 @@ class SideMenu extends StatelessWidget {
               Navigator.pushReplacementNamed(context, '/account-options');
             },
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: const Text("My Statements"),
-            onTap: () {},
-          )
         ];
 
       case "Admin":
@@ -79,7 +73,7 @@ class SideMenu extends StatelessWidget {
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.folder),
-            title: const Text("Loan & Payment Records"),
+            title: const Text("Reports Dashboard"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/admin-records');
             },
@@ -87,7 +81,7 @@ class SideMenu extends StatelessWidget {
           SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.file_present),
-            title: const Text("Vouchers & Disbursements Oversight"),
+            title: const Text("Finance Management"),
             onTap: () {},
           ),
         ];
@@ -112,7 +106,11 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.attach_money),
+            leading: Image.asset(
+                    'assets/icons/php-icon.png',
+                    width: 20,
+                    height: 20,
+                  ),
             title: const Text("Encode Payment Forms"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/encoder-payment');
@@ -161,7 +159,11 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.attach_money),
+            leading: Image.asset(
+                    'assets/icons/php-icon.png',
+                    width: 20,
+                    height: 20,
+                  ),
             title: const Text("Pay for Loan"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/member-payment');

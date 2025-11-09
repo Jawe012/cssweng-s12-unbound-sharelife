@@ -163,209 +163,209 @@ class _MemDBState extends State<MemberDB> {
     );
   }
 
-Widget filters() {
-  return Row(
-    children: [
-      // Reference number search
-      SizedBox(
-        width: 160,
-        height: buttonHeight,
-        child: TextField(
-          decoration: InputDecoration(
-            labelText: "Ref. No.",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+  Widget filters() {
+    return Row(
+      children: [
+        // Reference number search
+        SizedBox(
+          width: 160,
+          height: buttonHeight,
+          child: TextField(
+            decoration: InputDecoration(
+              labelText: "Ref. No.",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 8),
+            onChanged: (value) {
+              setState(() {
+                loans = loansData
+                    .where((loan) =>
+                        loan["ref"].toLowerCase().contains(value.toLowerCase()))
+                    .toList();
+              });
+            },
           ),
-          onChanged: (value) {
-            setState(() {
-              loans = loansData
-                  .where((loan) =>
-                      loan["ref"].toLowerCase().contains(value.toLowerCase()))
-                  .toList();
-            });
-          },
         ),
-      ),
-      SizedBox(width: 16),
+        SizedBox(width: 16),
 
-      // Start date
-      SizedBox(
-        width: 120,
-        height: buttonHeight,
-        child: TextField(
-          decoration: InputDecoration(
-            labelText: "Start Date",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+        // Start date
+        SizedBox(
+          width: 120,
+          height: buttonHeight,
+          child: TextField(
+            decoration: InputDecoration(
+              labelText: "Start Date",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 8),
+            readOnly: true,
+            onTap: () async {
+              DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+            },
           ),
-          readOnly: true,
-          onTap: () async {
-            DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-          },
         ),
-      ),
-      SizedBox(width: 16),
+        SizedBox(width: 16),
 
-      // End date
-      SizedBox(
-        width: 120,
-        height: buttonHeight,
-        child: TextField(
-          decoration: InputDecoration(
-            labelText: "End Date",
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+        // End date
+        SizedBox(
+          width: 120,
+          height: buttonHeight,
+          child: TextField(
+            decoration: InputDecoration(
+              labelText: "End Date",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: 8),
-          ),
-          readOnly: true,
-          onTap: () async {
-            DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-          },
-        ),
-      ),
-      SizedBox(width: 16),
-
-      // Search button
-      SizedBox(
-        height: buttonHeight,
-        child: ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            minimumSize: Size(80, buttonHeight),
-            padding: EdgeInsets.symmetric(horizontal: 8),
-          ),
-          child: Text(
-            "Search",
-            style: TextStyle(color: Colors.white),
+            readOnly: true,
+            onTap: () async {
+              DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+            },
           ),
         ),
-      ),
+        SizedBox(width: 16),
 
-      Spacer(),
-
-      // Download button
-      SizedBox(
-        height: buttonHeight,
-        child: ElevatedButton.icon(
-          onPressed: () {},
-          icon: Icon(Icons.download, color: Colors.white),
-          label: Text(
-            "Download",
-            style: TextStyle(color: Colors.white),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.black,
-            minimumSize: Size(100, buttonHeight),
-            padding: EdgeInsets.symmetric(horizontal: 8),
+        // Search button
+        SizedBox(
+          height: buttonHeight,
+          child: ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              minimumSize: Size(80, buttonHeight),
+              padding: EdgeInsets.symmetric(horizontal: 8),
+            ),
+            child: Text(
+              "Search",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
 
-Widget amortizationTable() {
-  return Expanded(
-    child: Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+        Spacer(),
+
+        // Download button
+        SizedBox(
+          height: buttonHeight,
+          child: ElevatedButton.icon(
+            onPressed: () {},
+            icon: Icon(Icons.download, color: Colors.white),
+            label: Text(
+              "Download",
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              minimumSize: Size(100, buttonHeight),
+              padding: EdgeInsets.symmetric(horizontal: 8),
+            ),
           ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: constraints.maxWidth,
-                ),
-                child: DataTable(
-                  sortColumnIndex: sortColumnIndex,
-                  sortAscending: isAscending,
-                  columnSpacing: 58,
-                  columns: [
-                    DataColumn(
-                        label: Text("Ref. No.", style: TextStyle(fontWeight: FontWeight.bold)),
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
-                        numeric: true,
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Interest", style: TextStyle(fontWeight: FontWeight.bold)),
-                        numeric: true,
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Start Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Due Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Inst Type", style: TextStyle(fontWeight: FontWeight.bold)),
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Total Inst", style: TextStyle(fontWeight: FontWeight.bold)),
-                        numeric: true,
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Inst Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
-                        numeric: true,
-                        onSort: (i, asc) => onSort(i, asc)),
-                    DataColumn(
-                        label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold)),
-                        onSort: (i, asc) => onSort(i, asc)),
-                  ],
-                  rows: loans
-                      .map(
-                        (loan) => DataRow(cells: [
-                          DataCell(Text(loan["ref"])),
-                          DataCell(Text("₱${loan["amt"]}")),
-                          DataCell(Text("${loan["interest"]}%")),
-                          DataCell(Text(loan["start"])),
-                          DataCell(Text(loan["due"])),
-                          DataCell(Text(loan["instType"])),
-                          DataCell(Text("${loan["totalInst"]}")),
-                          DataCell(Text("₱${loan["instAmt"]}")),
-                          DataCell(Text(loan["status"])),
-                        ]),
-                      )
-                      .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget amortizationTable() {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: constraints.maxWidth,
+                  ),
+                  child: DataTable(
+                    sortColumnIndex: sortColumnIndex,
+                    sortAscending: isAscending,
+                    columnSpacing: 58,
+                    columns: [
+                      DataColumn(
+                          label: Text("Ref. No.", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
+                          numeric: true,
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Interest", style: TextStyle(fontWeight: FontWeight.bold)),
+                          numeric: true,
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Start Date", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Due Date", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Inst Type", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Total Inst", style: TextStyle(fontWeight: FontWeight.bold)),
+                          numeric: true,
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Inst Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
+                          numeric: true,
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                    ],
+                    rows: loans
+                        .map(
+                          (loan) => DataRow(cells: [
+                            DataCell(Text(loan["ref"])),
+                            DataCell(Text("₱${loan["amt"]}")),
+                            DataCell(Text("${loan["interest"]}%")),
+                            DataCell(Text(loan["start"])),
+                            DataCell(Text(loan["due"])),
+                            DataCell(Text(loan["instType"])),
+                            DataCell(Text("${loan["totalInst"]}")),
+                            DataCell(Text("₱${loan["instAmt"]}")),
+                            DataCell(Text(loan["status"])),
+                          ]),
+                        )
+                        .toList(),
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 
 

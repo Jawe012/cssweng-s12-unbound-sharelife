@@ -124,7 +124,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
       children: [
         // Filter dropdown
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
@@ -236,38 +236,50 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
                       constraints: BoxConstraints(maxWidth: 1200),
                       child: _isLoading
                           ? Center(child: CircularProgressIndicator())
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // title
-                                Text(
-                                  "Payment Form Review",
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  "Review and validate/invalidate pending payment submissions.",
-                                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                                ),
-                                SizedBox(height: 24),
-
-                                // filter and counter
+                              : Column( children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    buildStatus(filteredPayments.length),
+
+                                    // title
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Payment Form Review",
+                                          style: TextStyle(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          "Review and validate/invalidate pending payment submissions.",
+                                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // filter and counter
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        buildStatus(filteredPayments.length),
+                                      ],
+                                    ),
                                   ],
                                 ),
-
                                 SizedBox(height: 24),
 
                                 // table
-                                paymentsTable(),
-                                SizedBox(height: 24),
+                                Expanded(
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: paymentsTable(),
+                                  ),
+                                ),
                               ],
                             ),
+
                     ),
                   ),
                 ),

@@ -486,8 +486,6 @@ class _EncAppliformState extends State<EncAppliform> {
                 items: [
                   "3 months",
                   "6 months",
-                  "12 months",
-                  "24 months",
                 ],
               ),
             ),
@@ -498,9 +496,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 controller: termController,
                 items: [
                   "Monthly",
-                  "Quarterly",
-                  "Semi-Annually",
-                  "Annually",
+                  "Bimonthly",
                 ],
               ),
             ),
@@ -511,15 +507,10 @@ class _EncAppliformState extends State<EncAppliform> {
         Row(
           children: [
             Expanded(
-              child: DropdownInputField(
+              child: TextInputField(
                 label: "Business Type",
                 controller: businessController,
-                items: [
-                  "Sole Proprietorship",
-                  "Partnership",
-                  "Corporation",
-                  "Cooperative",
-                ],
+                hint: "e.g. Retail, Sari-sari store, etc.", 
               ),
             ),
             SizedBox(width: 16),

@@ -105,32 +105,37 @@ class DateInputField extends StatelessWidget {
 
 class DropdownInputField extends StatelessWidget {
   final String label;
-  final TextEditingController controller;
+  final TextEditingController? controller;
   final List<String> items;
   final String? Function(String?)? validator;
+  final void Function(String?)? onChanged;
 
   const DropdownInputField({
     super.key,
     required this.label,
-    required this.controller,
+    this.controller,
     required this.items,
     this.validator,
+    this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: controller.text.isEmpty ? null : controller.text,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      ),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+      value: controller?.text.isNotEmpty == true ? controller!.text : null,
+      decoration: InputDecoration(labelText: label),
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
       onChanged: (value) {
-        controller.text = value!;
+        if (controller != null) {
+          controller!.text = value ?? '';
+        }
       },
+      validator: validator,
     );
   }
 }

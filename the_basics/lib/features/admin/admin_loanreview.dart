@@ -176,29 +176,35 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
 
-                          // title
-                          Text(
-                            "Loan Review",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Review and approve/reject pending loan applications.",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
-                          SizedBox(height: 24),
-
-                          // pending loans
+                          // title + filter row
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              buildStatus(loans.length),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Loan Application Review",
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Review and approve/reject pending loan applications.",
+                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              Spacer(), // adds space between left and right
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  buildStatus(loans.length),
+                                ],
+                              ),
                             ],
                           ),
 
-                          // filter row
                           SizedBox(height: 24),
 
                           // table

@@ -549,36 +549,82 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                     child: _isLoading 
                       ? const Center(child: CircularProgressIndicator())
-                      : ConstrainedBox(
+                      : SingleChildScrollView(
+                        child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 900),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               // ...existing title and back button...
+                              Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.arrow_back),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Loan Application Details",
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 48),
+                                  child: Text(
+                                    "Review the application form and accept or reject the submission.",
+                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                  ),
+                                ),
+                                SizedBox(height: 32),
                               
                               // Updated GridView with state variables
-                              GridView(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 30,
-                                  mainAxisSpacing: 30,
-                                  mainAxisExtent: 230,
+                              Container(
+                                padding: EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                children: [
-                                  loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 
-                                         int.tryParse(installment) ?? 0, repaymentTerm, businessType),
-                                  personalInfo(memberFirstName, memberLastName, memberBirthDate, age),
-                                  loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName),
-                                  contactInfo(memberEmail, memberPhone, address),
-                                ],
+                                child: Column(
+                                  children: [
+                                    GridView(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 30,
+                                        mainAxisSpacing: 30,
+                                        mainAxisExtent: 230,
+                                      ),
+                                      children: [
+                                        loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 
+                                              int.tryParse(installment) ?? 0, repaymentTerm, businessType),
+                                        personalInfo(memberFirstName, memberLastName, memberBirthDate, age),
+                                        loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName),
+                                        contactInfo(memberEmail, memberPhone, address),
+                                      ],
+                                    ),
+                                    Divider(),
+                                    decisionSection(),
+                                  ],
+                                ),
                               ),
-                              Divider(),
-                              decisionSection(),
+
                             ],
                           ),
                         ),
+                      ),
                   ),
                 ),
               ],
