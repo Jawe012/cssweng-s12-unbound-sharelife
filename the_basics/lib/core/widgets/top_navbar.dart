@@ -115,7 +115,7 @@ class SideMenuBtn extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "Unbound Sharelife",
+              "Sharelife",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,

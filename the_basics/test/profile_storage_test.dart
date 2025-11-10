@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the_basics/utils/profile_storage.dart';
+import 'package:the_basics/core/utils/profile_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

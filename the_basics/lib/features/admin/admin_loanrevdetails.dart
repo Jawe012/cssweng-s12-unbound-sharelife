@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -27,6 +27,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   String spouseLastName = '';
   String childFirstName = '';
   String childLastName = '';
+  String groupName = '';
   String memberEmail = '';
   String memberPhone = '';
   String address = '';
@@ -94,6 +95,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           spouseLastName = response['comaker_spouse_last_name'] ?? '';
           childFirstName = response['comaker_child_first_name'] ?? '';
           childLastName = response['comaker_child_last_name'] ?? '';
+          groupName = response['comaker_group_name'] ?? '';
 
           // Contact Info
           memberEmail = response['member_email'] ?? '';
@@ -386,7 +388,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   }
 
   Widget loanCoMakers(String spouseFName, String spouseLName,
-                      String childFName, String childLName) {
+                      String childFName, String childLName, String groupName) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -404,6 +406,8 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                 Text("Children First Name/s: ", style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text("Children Last Name: ", style: TextStyle(fontSize: contentFont)),
+                SizedBox(height: textSpacing),
+                Text("Group Name: ", style: TextStyle(fontSize: contentFont)),
               ],
             ),
             SizedBox(width: dataSpacing),
@@ -417,6 +421,8 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                 Text('$childFName', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$childLName', style: TextStyle(fontSize: contentFont)),
+                SizedBox(height: textSpacing),
+                Text('$groupName', style: TextStyle(fontSize: contentFont)),
               ],
             ),
           ],
@@ -456,6 +462,17 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             ),
           ],
         )
+      ],
+    );
+  }
+
+  Widget loanReason(String reason) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text("Reason", style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFont)),
+        SizedBox(height: titleSpacing),
+        Text('$reason', style: TextStyle(fontSize: contentFont)),
       ],
     );
   }
@@ -611,10 +628,13 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                                         loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 
                                               int.tryParse(installment) ?? 0, repaymentTerm, businessType),
                                         personalInfo(memberFirstName, memberLastName, memberBirthDate, age),
-                                        loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName),
+                                        loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName, groupName),
                                         contactInfo(memberEmail, memberPhone, address),
                                       ],
                                     ),
+                                    SizedBox(height: 20),
+                                    loanReason(reason),
+                                    SizedBox(height: 20),
                                     Divider(),
                                     decisionSection(),
                                   ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/auth_service.dart';
-import 'package:the_basics/widgets/auth_navbar.dart';
+import 'package:the_basics/core/widgets/auth_navbar.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
-import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/features/encoder/encoder_member_register.dart';
 
@@ -34,6 +34,7 @@ class _EncAppliformState extends State<EncAppliform> {
   final TextEditingController spouseLNameController = TextEditingController();
   final TextEditingController childFNameController = TextEditingController();
   final TextEditingController childLNameController = TextEditingController();
+  final TextEditingController groupController = TextEditingController();
   
   // contact info
   final TextEditingController emailController = TextEditingController();
@@ -397,6 +398,7 @@ class _EncAppliformState extends State<EncAppliform> {
       'comaker_spouse_last_name': spouseLNameController.text,
       'comaker_child_first_name': childFNameController.text,
       'comaker_child_last_name': childLNameController.text,
+      'comaker_group_name': groupController.text,
     };
 
     try {
@@ -615,6 +617,14 @@ class _EncAppliformState extends State<EncAppliform> {
               ),
             ),
           ],
+        ),
+        SizedBox(height: 16),
+        SizedBox(
+          width: 250,
+          child: TextInputField(
+            label: "Group Name",
+            controller: groupController,
+          ),
         ),
       ],
     );

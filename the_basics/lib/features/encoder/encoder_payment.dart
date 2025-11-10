@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
-import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

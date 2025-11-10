@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:the_basics/utils/profile_storage.dart';
+import 'package:the_basics/core/utils/profile_storage.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;

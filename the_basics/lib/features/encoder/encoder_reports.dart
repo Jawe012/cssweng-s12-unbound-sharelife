@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
-import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class EncoderRecords extends StatefulWidget {
-  const EncoderRecords({super.key});
+class EncoderReports extends StatefulWidget {
+  const EncoderReports({super.key});
 
   @override
-  State<EncoderRecords> createState() => _EncoderRecordsState();
+  State<EncoderReports> createState() => _EncoderReportsState();
 }
 
-class _EncoderRecordsState extends State<EncoderRecords> {
+class _EncoderReportsState extends State<EncoderReports> {
   int? sortColumnIndex;
   bool isAscending = true;
   String? selectedReportType;

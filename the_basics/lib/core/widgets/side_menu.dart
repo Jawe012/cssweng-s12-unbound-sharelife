@@ -171,12 +171,6 @@ class SideMenu extends StatelessWidget {
               Navigator.pushReplacementNamed(context, '/member-payment');
             },
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.file_present),
-            title: const Text("Docs & Vouchers"),
-            onTap: () {},
-          )
         ];
     }
   }

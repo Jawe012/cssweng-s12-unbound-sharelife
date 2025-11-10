@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
-import 'package:the_basics/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
 
 class EncoderDashboard extends StatelessWidget {
   const EncoderDashboard({super.key});

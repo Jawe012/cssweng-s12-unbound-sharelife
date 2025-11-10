@@ -8,7 +8,7 @@ import 'package:the_basics/features/admin/admin_loanreview.dart';
 import 'package:the_basics/features/admin/admin_loanrevdetails.dart';
 import 'package:the_basics/features/admin/admin_payment_review.dart';
 import 'package:the_basics/features/admin/admin_payment_review_details.dart';
-import 'package:the_basics/features/admin/admin_records.dart';
+import 'package:the_basics/features/admin/admin_reports.dart';
 import 'package:the_basics/features/admin/admin_finance_management.dart';
 import 'package:the_basics/features/admin/admin_edit_staff.dart';
 
@@ -24,7 +24,7 @@ import 'package:the_basics/features/member/mem_payment_history.dart';
 
 import 'package:the_basics/auth/register.dart';
 import 'package:the_basics/auth/staff_register.dart';
-import 'package:the_basics/utils/profile_storage_io.dart';
+import 'package:the_basics/core/utils/profile_storage_io.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/auth/auth_service.dart';
 
@@ -125,7 +125,7 @@ class _MainAppState extends State<MainApp> {
         '/encoder-dash': (context) => EncoderDashboard(),
         '/encoder-appliform': (context) => EncAppliform(),
         '/encoder-payment': (context) => EncoderPaymentForm(),
-        '/encoder-report': (context) => EncoderRecords(),
+        '/encoder-report': (context) => EncoderReports(),
         
         '/member-dash': (context) => MemberDB(),
         '/member-appliform': (context) => MemAppliform(),

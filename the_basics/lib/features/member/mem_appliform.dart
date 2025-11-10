@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:the_basics/widgets/top_navbar.dart';
-import 'package:the_basics/widgets/side_menu.dart';
-import 'package:the_basics/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -25,6 +25,7 @@ class LoanApplication {
   final String? spouseLastName;
   final String? childFirstName;
   final String? childLastName;
+  final String? groupName;
 
   //contact info
   final String? memberEmail;
@@ -47,6 +48,7 @@ class LoanApplication {
     this.spouseLastName,
     this.childFirstName,
     this.childLastName,
+    this.groupName,
     this.memberEmail,
     this.memberPhone,
     this.address,
@@ -69,6 +71,7 @@ class LoanApplication {
       'comaker_spouse_last_name': spouseLastName,
       'comaker_child_first_name': childFirstName,
       'comaker_child_last_name': childLastName,
+      'comaker_group_name': groupName,
       'member_email': memberEmail,
       'member_phone': memberPhone,
       'address': address,
@@ -108,6 +111,7 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController spouseLNameController = TextEditingController();
   final TextEditingController childFNameController = TextEditingController();
   final TextEditingController childLNameController = TextEditingController();
+  final TextEditingController groupController = TextEditingController();
   
   // contact info
   final TextEditingController emailController = TextEditingController();
@@ -276,6 +280,7 @@ class _MemAppliformState extends State<MemAppliform> {
     spouseLastName: spouseLNameController.text,
     childFirstName: childFNameController.text,
     childLastName: childLNameController.text,
+    groupName: groupController.text,
     memberEmail: emailController.text,
     memberPhone: phoneNumController.text,
     address: addrController.text,
@@ -561,6 +566,14 @@ class _MemAppliformState extends State<MemAppliform> {
               ),
             ),
           ],
+        ),
+        SizedBox(height: 16),
+        SizedBox(
+          width: 250,
+          child: TextInputField(
+            label: "Group Name",
+            controller: groupController,
+          ),
         ),
       ],
     );
