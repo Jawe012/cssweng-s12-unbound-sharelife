@@ -72,7 +72,7 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.folder),
+            leading: const Icon(Icons.bar_chart),
             title: const Text("Reports Dashboard"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/admin-records');

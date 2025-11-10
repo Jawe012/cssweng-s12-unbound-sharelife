@@ -563,7 +563,7 @@ class _AdminRecordsState extends State<AdminRecords> {
                               child: Form(
                                 child: SingleChildScrollView(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       
                                       // main table (sorting by time period not yet implemented)
