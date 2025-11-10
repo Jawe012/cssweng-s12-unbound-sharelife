@@ -82,7 +82,9 @@ class SideMenu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.file_present),
             title: const Text("Finance Management"),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/admin-finance');
+            },
           ),
         ];
 

@@ -8,7 +8,9 @@ import 'package:the_basics/features/admin/admin_loanreview.dart';
 import 'package:the_basics/features/admin/admin_loanrevdetails.dart';
 import 'package:the_basics/features/admin/admin_payment_review.dart';
 import 'package:the_basics/features/admin/admin_payment_review_details.dart';
-import 'package:the_basics/features/admin/admin_reports.dart';
+import 'package:the_basics/features/admin/admin_records.dart';
+import 'package:the_basics/features/admin/admin_finance_management.dart';
+import 'package:the_basics/features/admin/admin_edit_staff.dart';
 
 import 'package:the_basics/features/encoder/encoder_dashb.dart';
 import 'package:the_basics/features/encoder/encoder_appliform.dart';
@@ -117,6 +119,8 @@ class _MainAppState extends State<MainApp> {
         '/admin-payment-review': (context) => AdminPaymentReview(),
         '/admin-payment-review-details': (context) => AdminPaymentReviewDetails(),
         '/admin-records': (context) => AdminRecords(),
+        '/admin-finance': (context) => AdminFinanceManagement(),
+        '/admin-edit-staff': (context) => AdminEditStaff(),
         
         '/encoder-dash': (context) => EncoderDashboard(),
         '/encoder-appliform': (context) => EncAppliform(),

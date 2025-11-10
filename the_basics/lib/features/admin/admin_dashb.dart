@@ -287,13 +287,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
               DataCell(Text(staff["status"])),
               DataCell(Row(
                 children: [
-                  TextButton(
-                    onPressed: () => _showRoleChangeDialog(staff),
-                    child: const Text("Change Role"),
+                    TextButton(
+                      onPressed: () => _showRoleChangeDialog(staff),
+                      child: const Text("Change Role"),
+                    ),
+                    const SizedBox(width: 8),
+                    if (staff["status"] == "Active") ...[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context, 
+                          '/admin-edit-staff',
+                          arguments: staff['id'],
+                        );
+                      },
+                    child: const Text("Edit"),
                   ),
-                  const SizedBox(width: 8),
-                  if (staff["status"] == "Active") ...[
-                    TextButton(onPressed: () {}, child: const Text("Edit")),
                     TextButton(
                       onPressed: () {},
                       child: const Text(
