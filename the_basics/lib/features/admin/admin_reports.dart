@@ -6,14 +6,14 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
 
-class AdminRecords extends StatefulWidget {
-  const AdminRecords({super.key});
+class AdminReports extends StatefulWidget {
+  const AdminReports({super.key});
 
   @override
-  State<AdminRecords> createState() => _AdminRecordsState();
+  State<AdminReports> createState() => _AdminReportsState();
 }
 
-class _AdminRecordsState extends State<AdminRecords> {
+class _AdminReportsState extends State<AdminReports> {
   int? sortColumnIndex;
   bool isAscending = true;
   String? selectedReportType;
@@ -252,7 +252,7 @@ class _AdminRecordsState extends State<AdminRecords> {
     );
   }
 
-  // loans with missed or late payments.
+  // loans with missed or late payments. paid within a certain period of time
   Widget overdueLoansTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
@@ -438,7 +438,7 @@ class _AdminRecordsState extends State<AdminRecords> {
     );
   }
 
-  // Show scheduled payments that were not made on time.
+  // Show scheduled payments that were not made on time. no pay at all
   Widget missedPayTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 

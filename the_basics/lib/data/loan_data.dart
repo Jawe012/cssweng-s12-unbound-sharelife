@@ -1,6 +1,7 @@
 List<Map<String, dynamic>> loansData = [
   {
     "ref": "9873294",
+    "memName": "John Doe",
     "amt": 50000,
     "interest": 10,
     "start": "2025-01-15",
@@ -12,6 +13,7 @@ List<Map<String, dynamic>> loansData = [
   },
   {
     "ref": "1234567",
+    "memName": "Meowticols",
     "amt": 20000,
     "interest": 5,
     "start": "2025-02-01",
@@ -23,6 +25,7 @@ List<Map<String, dynamic>> loansData = [
   },
   {
     "ref": "2345678",
+    "memName": "Cookie cat",
     "amt": 30000,
     "interest": 7,
     "start": "2025-03-10",
@@ -34,6 +37,7 @@ List<Map<String, dynamic>> loansData = [
   },
   {
     "ref": "3456789",
+    "memName": "Thor Shwartznagger",
     "amt": 45000,
     "interest": 8,
     "start": "2025-04-05",
@@ -45,6 +49,7 @@ List<Map<String, dynamic>> loansData = [
   },
   {
     "ref": "4567890",
+    "memName": "Luna Lovegood",
     "amt": 15000,
     "interest": 6,
     "start": "2025-01-20",

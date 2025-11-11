@@ -72,6 +72,14 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
+            leading: const Icon(Icons.folder),
+            title: const Text("Loan and Payment Records"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/admin-loanpay-rec');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
             leading: const Icon(Icons.bar_chart),
             title: const Text("Reports Dashboard"),
             onTap: () {
@@ -116,6 +124,14 @@ class SideMenu extends StatelessWidget {
             title: const Text("Encode Payment Forms"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/encoder-payment');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
+            leading: const Icon(Icons.folder),
+            title: const Text("Loan and Payment Records"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-loanpay-rec');
             },
           ),
           SizedBox(height: 10),

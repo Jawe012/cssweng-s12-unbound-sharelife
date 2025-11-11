@@ -11,11 +11,13 @@ import 'package:the_basics/features/admin/admin_payment_review_details.dart';
 import 'package:the_basics/features/admin/admin_reports.dart';
 import 'package:the_basics/features/admin/admin_finance_management.dart';
 import 'package:the_basics/features/admin/admin_edit_staff.dart';
+import 'package:the_basics/features/admin/admin_loanpay_records.dart';
 
 import 'package:the_basics/features/encoder/encoder_dashb.dart';
 import 'package:the_basics/features/encoder/encoder_appliform.dart';
 import 'package:the_basics/features/encoder/encoder_payment.dart';
 import 'package:the_basics/features/encoder/encoder_reports.dart';
+import 'package:the_basics/features/encoder/encoder_loanpay_records.dart';
 
 import 'package:the_basics/features/member/mem_dashb.dart';
 import 'package:the_basics/features/member/mem_appliform.dart';
@@ -118,14 +120,16 @@ class _MainAppState extends State<MainApp> {
         '/admin-loanrevdetails': (context) => LoanReviewDetailsPage(),
         '/admin-payment-review': (context) => AdminPaymentReview(),
         '/admin-payment-review-details': (context) => AdminPaymentReviewDetails(),
-        '/admin-records': (context) => AdminRecords(),
+        '/admin-reports': (context) => AdminReports(),
         '/admin-finance': (context) => AdminFinanceManagement(),
         '/admin-edit-staff': (context) => AdminEditStaff(),
+        '/admin-loanpay-rec': (context) => AdminLoanPayRec(),
         
         '/encoder-dash': (context) => EncoderDashboard(),
         '/encoder-appliform': (context) => EncAppliform(),
         '/encoder-payment': (context) => EncoderPaymentForm(),
         '/encoder-report': (context) => EncoderReports(),
+        '/encoder-loanpay-rec': (context) => EncoderLoanPayRec(),
         
         '/member-dash': (context) => MemberDB(),
         '/member-appliform': (context) => MemAppliform(),
