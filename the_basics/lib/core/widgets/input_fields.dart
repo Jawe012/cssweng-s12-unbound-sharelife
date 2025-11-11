@@ -107,6 +107,7 @@ class DropdownInputField extends StatelessWidget {
   final String label;
   final TextEditingController? controller;
   final List<String> items;
+  final String? value;
   final String? Function(String?)? validator;
   final void Function(String?)? onChanged;
 
@@ -115,6 +116,7 @@ class DropdownInputField extends StatelessWidget {
     required this.label,
     this.controller,
     required this.items,
+    this.value,
     this.validator,
     this.onChanged,
   });
@@ -122,7 +124,9 @@ class DropdownInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: controller?.text.isNotEmpty == true ? controller!.text : null,
+      value: controller != null
+          ? (controller!.text.isNotEmpty ? controller!.text : null)
+          : value, // <-- use parent's state if controller is null
       decoration: InputDecoration(labelText: label),
       items: items
           .map((item) => DropdownMenuItem(
@@ -134,6 +138,7 @@ class DropdownInputField extends StatelessWidget {
         if (controller != null) {
           controller!.text = value ?? '';
         }
+        onChanged?.call(value); // <-- always call this so parent updates
       },
       validator: validator,
     );

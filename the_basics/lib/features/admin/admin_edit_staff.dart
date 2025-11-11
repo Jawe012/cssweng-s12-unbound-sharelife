@@ -165,13 +165,28 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Title
-                            Text(
-                              "Edit Staff Details",
-                              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              "Change Staff Information",
-                              style: TextStyle(color: Colors.grey, fontSize: 14),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.arrow_back),
+                                  onPressed: () => Navigator.pop(context),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Edit Staff Details",
+                                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      "Change Staff Information",
+                                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                             SizedBox(height: 32),
 
@@ -194,22 +209,6 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                                   : Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Header with back button
-                                        Row(
-                                          children: [
-                                            IconButton(
-                                              icon: Icon(Icons.arrow_back),
-                                              onPressed: () => Navigator.pop(context),
-                                              padding: EdgeInsets.zero,
-                                            ),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              "Edit Staff Information",
-                                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 24),
 
                                         // Insert Pictures
                                         InkWell(

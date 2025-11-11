@@ -9,7 +9,7 @@ import 'package:the_basics/features/admin/admin_loanrevdetails.dart';
 import 'package:the_basics/features/admin/admin_payment_review.dart';
 import 'package:the_basics/features/admin/admin_payment_review_details.dart';
 import 'package:the_basics/features/admin/admin_reports.dart';
-import 'package:the_basics/features/admin/admin_finance_management.dart';
+import 'package:the_basics/features/admin/admin_vouchgen.dart';
 import 'package:the_basics/features/admin/admin_edit_staff.dart';
 import 'package:the_basics/features/admin/admin_loanpay_records.dart';
 

@@ -1,52 +1,52 @@
 List<Map<String, dynamic>> payCollection = [
   {
+    "payID": "P001",
     "memName": "Juan Dela Cruz",
-    "memID": 201,
-    "totalLoans": 3,
-    "totalBorrowed": 75000.00,
-    "totalPaid": 50000.00,
-    "outBal": 25000.00,
-    "lastPaid": "2025-10-30",
-    "loanStatus": "Active"
+    "memID": 101,
+    "loanID": "L001",
+    "payDate": "2025-11-10",
+    "payMethod": "Cash",
+    "amountPaid": 5000,
+    "collectedBy": "Admin A"
   },
   {
+    "payID": "P002",
     "memName": "Maria Santos",
-    "memID": 202,
-    "totalLoans": 2,
-    "totalBorrowed": 120000.00,
-    "totalPaid": 120000.00,
-    "outBal": 0.00,
-    "lastPaid": "2025-09-28",
-    "loanStatus": "Completed"
+    "memID": 102,
+    "loanID": "L002",
+    "payDate": "2025-11-09",
+    "payMethod": "Gcash",
+    "amountPaid": 3000,
+    "collectedBy": "Admin B"
   },
   {
+    "payID": "P003",
     "memName": "Carlos Reyes",
-    "memID": 203,
-    "totalLoans": 4,
-    "totalBorrowed": 90000.00,
-    "totalPaid": 65000.00,
-    "outBal": 25000.00,
-    "lastPaid": "2025-10-10",
-    "loanStatus": "Active"
+    "memID": 103,
+    "loanID": "L003",
+    "payDate": "2025-11-08",
+    "payMethod": "Bank Transfer",
+    "amountPaid": 4500,
+    "collectedBy": "Admin A"
   },
   {
-    "memName": "Liza Mendoza",
-    "memID": 204,
-    "totalLoans": 1,
-    "totalBorrowed": 20000.00,
-    "totalPaid": 15000.00,
-    "outBal": 5000.00,
-    "lastPaid": "2025-10-15",
-    "loanStatus": "Overdue"
+    "payID": "P004",
+    "memName": "Ana Lim",
+    "memID": 104,
+    "loanID": "L004",
+    "payDate": "2025-11-07",
+    "payMethod": "Cash",
+    "amountPaid": 2500,
+    "collectedBy": "Admin C"
   },
   {
-    "memName": "Ramon Garcia",
-    "memID": 205,
-    "totalLoans": 5,
-    "totalBorrowed": 250000.00,
-    "totalPaid": 220000.00,
-    "outBal": 30000.00,
-    "lastPaid": "2025-10-25",
-    "loanStatus": "Active"
+    "payID": "P005",
+    "memName": "Miguel Tan",
+    "memID": 105,
+    "loanID": "L005",
+    "payDate": "2025-11-06",
+    "payMethod": "GCash",
+    "amountPaid": 6000,
+    "collectedBy": "Admin B"
   }
 ];

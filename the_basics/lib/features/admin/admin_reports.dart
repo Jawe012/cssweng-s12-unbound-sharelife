@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/cupertino.dart';
+
+//import 'package:pie_chart/pie_chart.dart';
+
+// placeholder data to see layout and functions
+import 'package:the_basics/data/active_loans.dart';
+import 'package:the_basics/data/overdue_loans.dart';
+import 'package:the_basics/data/member_loans.dart';
+import 'package:the_basics/data/pay_collection.dart';
+import 'package:the_basics/data/missed_pay.dart';
+import 'package:the_basics/data/vouch_revenue.dart';
 
 class AdminReports extends StatefulWidget {
   const AdminReports({super.key});
@@ -16,7 +26,25 @@ class _AdminReportsState extends State<AdminReports> {
   int? sortColumnIndex;
   bool isAscending = true;
   String? selectedReportType;
+  double buttonHeight = 28;
 
+  // Temporary placeholder data
+  final List<Map<String, dynamic>> activeLoansData = activeLoans;
+  final List<Map<String, dynamic>> overdueLoansData = overdueLoans;
+  final List<Map<String, dynamic>> memberLoansData = memberLoans;
+  final List<Map<String, dynamic>> missedPaymentsData = missedPay;
+  final List<Map<String, dynamic>> paymentCollectionData = payCollection;
+  final List<Map<String, dynamic>> voucherRevenueData = vouchRevenue;
+
+/*  IDEYUH
+    since diff yung filter kada table, make switch cases with
+    diff listtiles or children that will be appended to the final
+    row and returned by the function when done. parameters
+    include numbers that will indicate which of these will be 
+    included for that table's filters. 0 is a spacer.
+
+    note: can we even append this huhu
+*/
 
   Widget buttonsAndFiltersRow() {
     return Row(
@@ -33,48 +61,10 @@ class _AdminReportsState extends State<AdminReports> {
               "Missed Payments",
               "Voucher & Revenue Summary"
             ],
-            onChanged: (value) async {
+            onChanged: (value) {
               setState(() {
                 selectedReportType = value;
               });
-
-              if (value == "Active Loans") {
-                final data = await loadReportData("activeLoans");
-                setState(() {
-                  activeLoansData.clear();
-                  activeLoansData.addAll(data);
-                });
-              } else if (value == "Overdue Loans") {
-                final data = await loadReportData("overdueLoans");
-                setState(() {
-                  overdueLoansData.clear();
-                  overdueLoansData.addAll(data);
-                });
-              } else if (value == "Member Loan Summary") {
-                final data = await loadReportData("memberLoans");
-                setState(() {
-                  memberLoansData.clear();
-                  memberLoansData.addAll(data);
-                });
-              } else if (value == "Payment Collection") {
-                final data = await loadReportData("paymentCollection");
-                setState(() {
-                  paymentCollectionData.clear();
-                  paymentCollectionData.addAll(data);
-                });
-              } else if (value == "Missed Payments") {
-                final data = await loadReportData("missedPayments");
-                setState(() {
-                  missedPaymentsData.clear();
-                  missedPaymentsData.addAll(data);
-                });
-              } else if (value == "Voucher & Revenue Summary") {
-                final data = await loadReportData("voucherRevenue");
-                setState(() {
-                  voucherRevenueData.clear();
-                  voucherRevenueData.addAll(data);
-                });
-              }
             },
           ),
         ),
@@ -92,23 +82,6 @@ class _AdminReportsState extends State<AdminReports> {
           ),
         ),
         SizedBox(width: 16),
-
-        SizedBox(
-          height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            label: const Text(
-              "Generate Report",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
-        ),
 
         Spacer(),
         
@@ -163,152 +136,106 @@ class _AdminReportsState extends State<AdminReports> {
     });
   }
 
-  /// Load dataset from JSON file based on report type
-  Future<List<Map<String, dynamic>>> loadReportData(String reportType) async {
-    String filePath;
-
-    // Map report types to JSON files
-    if (reportType == "activeLoans") {
-      filePath = 'data/active_loans.json';
-    } else if (reportType == "overdueLoans") {
-      filePath = 'data/overdue_loans.json';
-    } else if (reportType == "memberLoans") {
-      filePath = 'data/member_loans.json';
-    } else if (reportType == "paymentCollection") {
-      filePath = 'data/payment_collection.json';
-    } else if (reportType == "missedPayments") {
-      filePath = 'data/missed_payments.json';
-    } else if (reportType == "voucherRevenue") {
-      filePath = 'data/voucher_revenue.json';
-    } else {
-      throw Exception("Unknown report type: $reportType");
-    }
-
-    // Load JSON file
-    final String response = await rootBundle.loadString(filePath);
-    final List data = json.decode(response);
-
-    return data.map((e) => Map<String, dynamic>.from(e)).toList();
-  }
-
   // all loans currently being paid (not yet completed or overdue).
   Widget activeLoansTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
-                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                      DataColumn(label: Text("Loan Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanType")),
-                      DataColumn(label: Text("Principal Amount", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "principalAmt")),
-                      DataColumn(label: Text("Remaining Balance", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "remainBal")),
-                      DataColumn(label: Text("Start Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "startDate")),
-                      DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["loanID"].toString())),
-                        DataCell(Text(loan["memName"])),
-                        DataCell(Text(loan["loanType"])),
-                        DataCell(Text("₱${loan["principalAmt"]}")),
-                        DataCell(Text("₱${loan["remainBal"]}")),
-                        DataCell(Text(loan["startDate"])),
-                        DataCell(Text(loan["dueDate"])),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
+                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                    DataColumn(label: Text("Loan Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanType")),
+                    DataColumn(label: Text("Start Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "startDate")),
+                    DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
+                    DataColumn(label: Text("Principal Amount", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "principalAmt")),
+                    DataColumn(label: Text("Remaining Balance", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "remainBal")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                    DataCell(Text("${loan["loanID"] ?? "-"}")),
+                    DataCell(Text("${loan["memName"] ?? "-"}")),
+                    DataCell(Text("${loan["loanType"] ?? "-"}")),
+                    DataCell(Text("${loan["startDate"] ?? "-"}")),
+                    DataCell(Text("${loan["dueDate"] ?? "-"}")),
+                    DataCell(Text("₱${loan["principalAmt"] ?? "0"}")),
+                    DataCell(Text("₱${loan["remainBal"] ?? "0"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  // loans with missed or late payments. paid within a certain period of time
+  // loans with missed or late payments.
   Widget overdueLoansTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
-                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                      DataColumn(label: Text("Loan Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanType")),
-                      DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
-                      DataColumn(label: Text("Days Overdue", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "daysOverdue")),
-                      DataColumn(label: Text("Amount Due", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "amountDue")),
-                      DataColumn(label: Text("Accumulated Late Fees", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "lateFees")),
-                      DataColumn(label: Text("Contact No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "contactNo")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["loanID"].toString())),
-                        DataCell(Text(loan["memName"])),
-                        DataCell(Text(loan["loanType"])),
-                        DataCell(Text(loan["dueDate"])),
-                        DataCell(Text(loan["daysOverdue"].toString())),
-                        DataCell(Text("₱${loan["amountDue"]}")),
-                        DataCell(Text("₱${loan["lateFees"]}")),
-                        DataCell(Text(loan["contactNo"])),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
+                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                    DataColumn(label: Text("Loan Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanType")),
+                    DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
+                    DataColumn(label: Text("Days Overdue", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "daysOverdue")),
+                    DataColumn(label: Text("Amount Due", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amountDue")),
+                    DataColumn(label: Text("Accumulated Late Fees", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "lateFees")),
+                    DataColumn(label: Text("Contact No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "contactNo")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                      DataCell(Text("${loan["loanID"] ?? "-"}")),
+                      DataCell(Text("${loan["memName"] ?? "-"}")),
+                      DataCell(Text("${loan["loanType"] ?? "-"}")),
+                      DataCell(Text("${loan["dueDate"] ?? "-"}")),
+                      DataCell(Text("${loan["daysOverdue"] ?? "0"}")),
+                      DataCell(Text("₱${loan["amountDue"] ?? "0"}")),
+                      DataCell(Text("₱${loan["lateFees"] ?? "0"}")),
+                      DataCell(Text("${loan["contactNo"] ?? "-"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -317,60 +244,51 @@ class _AdminReportsState extends State<AdminReports> {
   Widget memberLoansTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                      DataColumn(label: Text("Member ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memID")),
-                      DataColumn(label: Text("Total Loans", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "totalLoans")),
-                      DataColumn(label: Text("Total Borrowed", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "totalBorrowed")),
-                      DataColumn(label: Text("Total Paid", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "totalPaid")),
-                      DataColumn(label: Text("Outstanding Balance", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "outBal")),
-                      DataColumn(label: Text("Last Payment Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "lastPaid")),
-                      DataColumn(label: Text("Loan Status", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanStatus")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["memName"])),
-                        DataCell(Text(loan["memID"].toString())),
-                        DataCell(Text("₱${loan["totalLoans"]}")),
-                        DataCell(Text("₱${loan["totalBorrowed"]}")),
-                        DataCell(Text("₱${loan["totalPaid"]}")),
-                        DataCell(Text("₱${loan["outBal"]}")),
-                        DataCell(Text(loan["lastPaid"])),
-                        DataCell(Text(loan["loanStatus"])),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                    DataColumn(label: Text("Member ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memID")),
+                    DataColumn(label: Text("Total Loans", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "totalLoans")),
+                    DataColumn(label: Text("Total Borrowed", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "totalBorrowed")),
+                    DataColumn(label: Text("Total Paid", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "totalPaid")),
+                    DataColumn(label: Text("Outstanding Balance", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "outBal")),
+                    DataColumn(label: Text("Last Payment Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "lastPaid")),
+                    DataColumn(label: Text("Loan Status", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanStatus")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                      DataCell(Text("${loan["memName"] ?? "-"}")),
+                      DataCell(Text("${loan["memID"] ?? "-"}")),
+                      DataCell(Text("${loan["totalLoans"] ?? "0"}")),
+                      DataCell(Text("₱${loan["totalBorrowed"] ?? "0"}")),
+                      DataCell(Text("₱${loan["totalPaid"] ?? "0"}")),
+                      DataCell(Text("₱${loan["outBal"] ?? "0"}")),
+                      DataCell(Text("${loan["lastPaid"] ?? "-"}")),
+                      DataCell(Text("${loan["loanStatus"] ?? "-"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -379,120 +297,102 @@ class _AdminReportsState extends State<AdminReports> {
   Widget payCollectionTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Payment ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payID")),
-                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                      DataColumn(label: Text("Member ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memID")),
-                      DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
-                      DataColumn(label: Text("Payment Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payDate")),
-                      DataColumn(label: Text("Payment Method", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payMethod")),
-                      DataColumn(label: Text("Amount Paid", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "amountPaid")),
-                      DataColumn(label: Text("Collected By", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "collectedBy")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["payID"])),
-                        DataCell(Text(loan["memName"])),
-                        DataCell(Text(loan["memID"])),
-                        DataCell(Text(loan["loanID"])),
-                        DataCell(Text(loan["payDate"])),
-                        DataCell(Text(loan["payMethod"])),
-                        DataCell(Text("₱${loan["amountPaid"]}")),
-                        DataCell(Text(loan["collectedBy"])),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Payment ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payID")),
+                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                    DataColumn(label: Text("Member ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memID")),
+                    DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
+                    DataColumn(label: Text("Payment Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payDate")),
+                    DataColumn(label: Text("Payment Method", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payMethod")),
+                    DataColumn(label: Text("Amount Paid", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amountPaid")),
+                    DataColumn(label: Text("Collected By", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "collectedBy")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                      DataCell(Text("${loan["payID"] ?? "-"}")),
+                      DataCell(Text("${loan["memName"] ?? "-"}")),
+                      DataCell(Text("${loan["memID"] ?? "-"}")),
+                      DataCell(Text("${loan["loanID"] ?? "-"}")),
+                      DataCell(Text("${loan["payDate"] ?? "-"}")),
+                      DataCell(Text("${loan["payMethod"] ?? "-"}")),
+                      DataCell(Text("₱${loan["amountPaid"] ?? "0"}")),
+                      DataCell(Text("${loan["collectedBy"] ?? "-"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  // Show scheduled payments that were not made on time. no pay at all
+  // Show scheduled payments that were not made on time.
   Widget missedPayTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
-                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                      DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
-                      DataColumn(label: Text("Amount Due", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "amountDue")),
-                      DataColumn(label: Text("Days Missed", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "daysMissed")),
-                      DataColumn(label: Text("Contact No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "contactNo")),
-                      DataColumn(label: Text("Next Pay Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "nextPayDate")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["loanID"])),
-                        DataCell(Text(loan["memName"])),
-                        DataCell(Text(loan["dueDate"])),
-                        DataCell(Text("₱${loan["amountDue"]}")),
-                        DataCell(Text(loan["daysMissed"])),
-                        DataCell(Text(loan["contactNo"])),
-                        DataCell(Text(loan["nextPayDate"])),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
+                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                    DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
+                    DataColumn(label: Text("Amount Due", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amountDue")),
+                    DataColumn(label: Text("Days Missed", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "daysMissed")),
+                    DataColumn(label: Text("Contact No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "contactNo")),
+                    DataColumn(label: Text("Next Pay Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "nextPayDate")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                      DataCell(Text("${loan["loanID"] ?? "-"}")),
+                      DataCell(Text("${loan["memName"] ?? "-"}")),
+                      DataCell(Text("${loan["dueDate"] ?? "-"}")),
+                      DataCell(Text("₱${loan["amountDue"] ?? "0"}")),
+                      DataCell(Text("${loan["daysMissed"] ?? "0"}")),
+                      DataCell(Text("${loan["contactNo"] ?? "-"}")),
+                      DataCell(Text("${loan["nextPayDate"] ?? "-"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -501,70 +401,51 @@ class _AdminReportsState extends State<AdminReports> {
   Widget voucherRevenueTable(List<Map<String, dynamic>> loans) {
     const boldStyle = TextStyle(fontWeight: FontWeight.bold);
 
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    sortColumnIndex: sortColumnIndex,
-                    sortAscending: isAscending,
-                    columnSpacing: 58,
-                    columns: [
-                      DataColumn(label: Text("Date Range", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "dateRange")),
-                      DataColumn(label: Text("Total Loans Approved", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "totApproved")),
-                      DataColumn(label: Text("Total Disbursed Amt.", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "disbursedAmt")),
-                      DataColumn(label: Text("Total Payments Received", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "payRecvd")),
-                      DataColumn(label: Text("Total Interest Earned", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "intEarned")),
-                      DataColumn(label: Text("Outstanding Bal.", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "outBal")),
-                      DataColumn(label: Text("Total Overdue Amt.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "overdueAmt")),
-                    ],
-                    rows: loans.map((loan) {
-                      return DataRow(cells: [
-                        DataCell(Text(loan["dateRange"])),
-                        DataCell(Text(loan["totApproved"])),
-                        DataCell(Text("₱${loan["disbursedAmt"]}")),
-                        DataCell(Text("₱${loan["payRecvd"]}")),
-                        DataCell(Text("₱${loan["intEarned"]}")),
-                        DataCell(Text("₱${loan["outBal"]}")),
-                        DataCell(Text("₱${loan["overdueAmt"]}")),
-                      ]);
-                    }).toList(),
-                  ),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  sortColumnIndex: sortColumnIndex,
+                  sortAscending: isAscending,
+                  columnSpacing: 58,
+                  columns: [
+                    DataColumn(label: Text("Voucher ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "voucherID")),
+                    DataColumn(label: Text("Date Issued", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dateIssued")),
+                    DataColumn(label: Text("Description", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "desc")),
+                    DataColumn(label: Text("Amount Earned", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amtEarned")),
+                    DataColumn(label: Text("Revenue Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "revType")),
+                    DataColumn(label: Text("Recorded By", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "recordedBy")),
+                  ],
+                  rows: loans.map((loan) {
+                    return DataRow(cells: [
+                      DataCell(Text("${loan["voucherID"] ?? "-"}")),
+                      DataCell(Text("${loan["dateIssued"] ?? "-"}")),
+                      DataCell(Text("${loan["desc"] ?? "-"}")),
+                      DataCell(Text("₱${loan["amtEarned"] ?? "0"}")),
+                      DataCell(Text("${loan["revType"] ?? "-"}")),
+                      DataCell(Text("${loan["recordedBy"] ?? "-"}")),
+                    ]);
+                  }).toList(),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-
-  // Temporary placeholder data
-  final List<Map<String, dynamic>> activeLoansData = [];
-  final List<Map<String, dynamic>> overdueLoansData = [];
-  final List<Map<String, dynamic>> memberLoansData = [];
-  final List<Map<String, dynamic>> paymentCollectionData = [];
-  final List<Map<String, dynamic>> missedPaymentsData = [];
-  final List<Map<String, dynamic>> voucherRevenueData = [];
 
 
   @override
@@ -632,7 +513,7 @@ class _AdminReportsState extends State<AdminReports> {
                               child: Form(
                                 child: SingleChildScrollView(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       
                                       // main table (sorting by time period not yet implemented)
@@ -649,23 +530,21 @@ class _AdminReportsState extends State<AdminReports> {
                                       else if (selectedReportType == "Voucher & Revenue Summary")
                                         voucherRevenueTable(voucherRevenueData)
                                       else
-                                        Center(
-                                          child: Column (
-                                            //mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.bar_chart, size: 64, color: Colors.grey),
-                                              SizedBox(height: 16),
-                                              Text(
-                                                'No Report Selected',
-                                                style: TextStyle(fontSize: 18, color: Colors.grey),
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'Reports will appear here once you select a report type.',
-                                                style: TextStyle(fontSize: 14, color: Colors.grey),
-                                              ),
-                                            ],
-                                          ),
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(CupertinoIcons.chart_bar_alt_fill, size: 64, color: Colors.grey),
+                                            SizedBox(height: 16),
+                                            Text(
+                                              'No Report Selected',
+                                              style: TextStyle(fontSize: 18, color: Colors.grey),
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'Reports will appear here once you have chosen a report',
+                                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                                            ),
+                                          ],
                                         ),
                                     ]
                                   ),

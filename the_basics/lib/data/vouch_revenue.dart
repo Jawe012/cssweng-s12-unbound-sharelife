@@ -1,47 +1,42 @@
 List<Map<String, dynamic>> vouchRevenue = [
   {
-    "dateRange": "Jan 1 - Jan 31, 2025",
-    "totApproved": 24,
-    "disbursedAmt": 850000,
-    "payRecvd": 720000,
-    "intEarned": 55000,
-    "outBal": 130000,
-    "overdueAmt": 25000
+    "voucherID": "V001",
+    "dateIssued": "2025-11-01",
+    "desc": "Membership Fee",
+    "amtEarned": 1500,
+    "revType": "Fee",
+    "recordedBy": "Admin A"
   },
   {
-    "dateRange": "Feb 1 - Feb 28, 2025",
-    "totApproved": 31,
-    "disbursedAmt": 1130000,
-    "payRecvd": 980000,
-    "intEarned": 87500,
-    "outBal": 150000,
-    "overdueAmt": 32000
+    "voucherID": "V002",
+    "dateIssued": "2025-11-02",
+    "desc": "Late Payment Interest",
+    "amtEarned": 500,
+    "revType": "Interest",
+    "recordedBy": "Admin B"
   },
   {
-    "dateRange": "Mar 1 - Mar 31, 2025",
-    "totApproved": 19,
-    "disbursedAmt": 650000,
-    "payRecvd": 540000,
-    "intEarned": 48000,
-    "outBal": 110000,
-    "overdueAmt": 17000
+    "voucherID": "V003",
+    "dateIssued": "2025-11-03",
+    "desc": "Special Voucher Sale",
+    "amtEarned": 2000,
+    "revType": "Voucher",
+    "recordedBy": "Admin C"
   },
   {
-    "dateRange": "Apr 1 - Apr 30, 2025",
-    "totApproved": 27,
-    "disbursedAmt": 960000,
-    "payRecvd": 810000,
-    "intEarned": 62500,
-    "outBal": 135000,
-    "overdueAmt": 21000
+    "voucherID": "V004",
+    "dateIssued": "2025-11-04",
+    "desc": "Processing Fee",
+    "amtEarned": 750,
+    "revType": "Fee",
+    "recordedBy": "Admin A"
   },
   {
-    "dateRange": "May 1 - May 31, 2025",
-    "totApproved": 22,
-    "disbursedAmt": 720000,
-    "payRecvd": 630000,
-    "intEarned": 49000,
-    "outBal": 90000,
-    "overdueAmt": 12000
+    "voucherID": "V005",
+    "dateIssued": "2025-11-05",
+    "desc": "Interest Adjustment",
+    "amtEarned": 1200,
+    "revType": "Interest",
+    "recordedBy": "Admin B"
   }
 ];
