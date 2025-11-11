@@ -28,6 +28,9 @@ import 'package:the_basics/core/utils/profile_storage_io.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/auth/auth_service.dart';
 
+import 'package:the_basics/core/utils/notification_view.dart';
+import 'package:the_basics/core/utils/notifications_list.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
@@ -112,6 +115,9 @@ class _MainAppState extends State<MainApp> {
         '/home':(context) => MemberDB(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
+
+        '/notifications': (context) => const NotificationsListPage(),
+    '/notification-view': (context) => const NotificationViewPage(),
 
         '/admin-dash': (context) => AdminDashboard(),
         '/admin-loanreview': (context) => LoanReviewPage(),
