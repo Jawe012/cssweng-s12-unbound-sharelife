@@ -1,4 +1,4 @@
-List<Map<String, dynamic>> pay_collection = [
+List<Map<String, dynamic>> payCollection = [
   {
     "memName": "Juan Dela Cruz",
     "memID": 201,

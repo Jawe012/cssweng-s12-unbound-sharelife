@@ -71,6 +71,7 @@ class _TopNavBarState extends State<TopNavBar> {
               Navigator.pushNamed(context, '/notifications');
             },
           ),
+          SizedBox(width: 10),
           ProfileBtn(onAccountSettings: widget.onAccountSettings),
         ],
       ),

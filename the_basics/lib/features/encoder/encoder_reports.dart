@@ -4,6 +4,14 @@ import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// placeholder data to see layout and functions
+import 'package:the_basics/data/active_loans.dart';
+import 'package:the_basics/data/overdue_loans.dart';
+import 'package:the_basics/data/member_loans.dart';
+import 'package:the_basics/data/pay_collection.dart';
+import 'package:the_basics/data/missed_pay.dart';
+import 'package:the_basics/data/vouch_revenue.dart';
+
 class EncoderReports extends StatefulWidget {
   const EncoderReports({super.key});
 
@@ -17,12 +25,12 @@ class _EncoderReportsState extends State<EncoderReports> {
   String? selectedReportType;
 
   // Temporary placeholder data
-  final List<Map<String, dynamic>> activeLoansData = [];
-  final List<Map<String, dynamic>> overdueLoansData = [];
-  final List<Map<String, dynamic>> memberLoansData = [];
-  final List<Map<String, dynamic>> paymentCollectionData = [];
-  final List<Map<String, dynamic>> missedPaymentsData = [];
-  final List<Map<String, dynamic>> voucherRevenueData = [];
+  final List<Map<String, dynamic>> activeLoansData = activeLoans;
+  final List<Map<String, dynamic>> overdueLoansData = overdueLoans;
+  final List<Map<String, dynamic>> memberLoansData = memberLoans;
+  final List<Map<String, dynamic>> paymentCollectionData = payCollection;
+  final List<Map<String, dynamic>> missedPaymentsData = missedPay;
+  final List<Map<String, dynamic>> voucherRevenueData = vouchRevenue;
 
 
   Widget buttonsAndFiltersRow() {

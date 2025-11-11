@@ -64,7 +64,11 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.receipt),
+            leading: Image.asset(
+                    'assets/icons/php-icon.png',
+                    width: 20,
+                    height: 20,
+                  ),
             title: const Text("Payment Form Review"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/admin-payment-review');
@@ -72,10 +76,10 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text("Loan and Payment Records"),
+            leading: const Icon(Icons.receipt_long_sharp),
+            title: const Text("Voucher Search & Generation"),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-loanpay-rec');
+              Navigator.pushReplacementNamed(context, '/admin-finance');
             },
           ),
           SizedBox(height: 10),
@@ -88,10 +92,10 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.file_present),
-            title: const Text("Finance Management"),
+            leading: const Icon(Icons.folder),
+            title: const Text("Loan and Payment Records"),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-finance');
+              Navigator.pushReplacementNamed(context, '/admin-loanpay-rec');
             },
           ),
         ];
@@ -128,20 +132,20 @@ class SideMenu extends StatelessWidget {
           ),
           SizedBox(height: 10),
           ListTile(
+            leading: const Icon(Icons.bar_chart),
+            title: const Text("Reports Dashboard"),
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/encoder-report');
+            },
+          ),
+          SizedBox(height: 10),
+          ListTile(
             leading: const Icon(Icons.folder),
             title: const Text("Loan and Payment Records"),
             onTap: () {
               Navigator.pushReplacementNamed(context, '/encoder-loanpay-rec');
             },
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text("Reports Dashboard"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-report');
-            },
-          )
         ];
 
       case "Member":

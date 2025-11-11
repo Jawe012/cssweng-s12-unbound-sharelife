@@ -22,68 +22,36 @@ class _MemDBState extends State<EncoderLoanPayRec> {
 
   double buttonHeight = 28;
 
-
-  // Loan tab things
-
-  void onSortLoans(int columnIndex, bool ascending) {
+  void onSort<T>(
+    int columnIndex,
+    bool ascending,
+    List<Map<String, dynamic>> data,
+    String key,
+  ) {
     setState(() {
       sortColumnIndex = columnIndex;
       isAscending = ascending;
 
-      switch (columnIndex) {
-        case 0:
-          loans.sort((a, b) => ascending
-              ? a["ref"].compareTo(b["ref"])
-              : b["ref"].compareTo(a["ref"]));
-          break;
-        case 1:
-          loans.sort((a, b) => ascending
-              ? a["memName"].compareTo(b["memName"])
-              : b["memName"].compareTo(a["memName"]));
-          break;
-        case 2:
-          loans.sort((a, b) => ascending
-              ? a["amt"].compareTo(b["amt"])
-              : b["amt"].compareTo(a["amt"]));
-          break;
-        case 3:
-          loans.sort((a, b) => ascending
-              ? a["interest"].compareTo(b["interest"])
-              : b["interest"].compareTo(a["interest"]));
-          break;
-        case 4:
-          loans.sort((a, b) => ascending
-              ? a["start"].compareTo(b["start"])
-              : b["start"].compareTo(a["start"]));
-          break;
-        case 5:
-          loans.sort((a, b) => ascending
-              ? a["due"].compareTo(b["due"])
-              : b["due"].compareTo(a["due"]));
-          break;
-        case 6:
-          loans.sort((a, b) => ascending
-              ? a["instType"].compareTo(b["instType"])
-              : b["instType"].compareTo(a["instType"]));
-          break;
-        case 7:
-          loans.sort((a, b) => ascending
-              ? a["totalInst"].compareTo(b["totalInst"])
-              : b["totalInst"].compareTo(a["totalInst"]));
-          break;
-        case 8:
-          loans.sort((a, b) => ascending
-              ? a["instAmt"].compareTo(b["instAmt"])
-              : b["instAmt"].compareTo(a["instAmt"]));
-          break;
-        case 9:
-          loans.sort((a, b) => ascending
-              ? a["status"].compareTo(b["status"])
-              : b["status"].compareTo(a["status"]));
-          break;
-      }
+      data.sort((a, b) {
+        final valueA = a[key];
+        final valueB = b[key];
+
+        if (valueA == null || valueB == null) return 0;
+
+        if (valueA is num && valueB is num) {
+          return ascending ? valueA.compareTo(valueB) : valueB.compareTo(valueA);
+        } else if (valueA is DateTime && valueB is DateTime) {
+          return ascending ? valueA.compareTo(valueB) : valueB.compareTo(valueA);
+        } else {
+          return ascending
+              ? valueA.toString().compareTo(valueB.toString())
+              : valueB.toString().compareTo(valueA.toString());
+        }
+      });
     });
   }
+
+  // Loan tab things
 
   Widget loanFilters() {
     return Container(
@@ -240,7 +208,9 @@ class _MemDBState extends State<EncoderLoanPayRec> {
     );
   }
 
-  Widget loansTable() {
+  Widget loansTable(List<Map<String, dynamic>> loans) {
+    const boldStyle = TextStyle(fontWeight: FontWeight.bold);
+
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16),
@@ -262,65 +232,37 @@ class _MemDBState extends State<EncoderLoanPayRec> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                  ),
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     sortColumnIndex: sortColumnIndex,
                     sortAscending: isAscending,
                     columnSpacing: 58,
                     columns: [
-                      DataColumn(
-                          label: Text("Ref. No.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Member Name", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Interest", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Start Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Due Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Inst Type", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Total Inst", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Inst Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortLoans(i, asc)),
-                      DataColumn(
-                          label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortLoans(i, asc)),
+                      DataColumn(label: Text("Ref No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "ref")),
+                      DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
+                      DataColumn(label: Text("Amt.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amt")),
+                      DataColumn(label: Text("Interest", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "interest")),
+                      DataColumn(label: Text("Start Date", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "start")),
+                      DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "due")),
+                      DataColumn(label: Text("Inst. Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "instType")),
+                      DataColumn(label: Text("Total Inst.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "totalInst")),
+                      DataColumn(label: Text("Inst. Amt.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "instAmt")),
+                      DataColumn(label: Text("Status", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "status")),
                     ],
-                    rows: loans
-                        .map(
-                          (loan) => DataRow(cells: [
-                            DataCell(Text(loan["ref"])),
-                            DataCell(Text(loan["memName"])),
-                            DataCell(Text("₱${loan["amt"]}")),
-                            DataCell(Text("${loan["interest"]}%")),
-                            DataCell(Text(loan["start"])),
-                            DataCell(Text(loan["due"])),
-                            DataCell(Text(loan["instType"])),
-                            DataCell(Text("${loan["totalInst"]}")),
-                            DataCell(Text("₱${loan["instAmt"]}")),
-                            DataCell(Text(loan["status"])),
-                          ]),
-                        )
-                        .toList(),
+                    rows: loans.map((loan) {
+                      return DataRow(cells: [
+                        DataCell(Text(loan["ref"])),
+                        DataCell(Text(loan["memName"])),
+                        DataCell(Text("₱${loan["amt"]}")),
+                        DataCell(Text("${loan["interest"]}%")),
+                        DataCell(Text(loan["start"])),
+                        DataCell(Text(loan["due"])),
+                        DataCell(Text(loan["instType"])),
+                        DataCell(Text("${loan["totalInst"]}")),
+                        DataCell(Text("₱${loan["instAmt"]}")),
+                        DataCell(Text(loan["status"])),
+                      ]);
+                    }).toList(),
                   ),
                 ),
               ),
@@ -333,61 +275,6 @@ class _MemDBState extends State<EncoderLoanPayRec> {
 
 
   // Payment tab things
-  void onSortPay(int columnIndex, bool ascending) {
-    setState(() {
-      sortColumnIndex = columnIndex;
-      isAscending = ascending;
-
-      switch (columnIndex) {
-        case 0: // payment id
-          filteredPayments.sort((a, b) => ascending
-              ? (a["payment_id"] ?? 0).compareTo(b["payment_id"] ?? 0)
-              : (b["payment_id"] ?? 0).compareTo(a["payment_id"] ?? 0));
-          break;
-        case 1: // loan ref
-          filteredPayments.sort((a, b) => ascending
-              ? (a["approved_loan_id"] ?? 0).compareTo(b["approved_loan_id"] ?? 0)
-              : (b["approved_loan_id"] ?? 0).compareTo(a["approved_loan_id"] ?? 0));
-          break;
-        case 2: // installment #
-          filteredPayments.sort((a, b) => ascending
-              ? (a["installment_number"] ?? 0).compareTo(b["installment_number"] ?? 0)
-              : (b["installment_number"] ?? 0).compareTo(a["installment_number"] ?? 0));
-          break;
-        case 3: // amount
-          filteredPayments.sort((a, b) {
-            final aAmt = (a["amount"] is num) ? (a["amount"] as num).toDouble() : double.tryParse(a["amount"].toString()) ?? 0.0;
-            final bAmt = (b["amount"] is num) ? (b["amount"] as num).toDouble() : double.tryParse(b["amount"].toString()) ?? 0.0;
-            return ascending ? aAmt.compareTo(bAmt) : bAmt.compareTo(aAmt);
-          });
-          break;
-        case 4: // payment type
-          filteredPayments.sort((a, b) => ascending
-              ? (a["payment_type"] ?? '').compareTo(b["payment_type"] ?? '')
-              : (b["payment_type"] ?? '').compareTo(a["payment_type"] ?? ''));
-          break;
-        case 5: // reference
-          filteredPayments.sort((a, b) {
-            final aRef = a["gcash_reference"] ?? a["bank_name"] ?? '';
-            final bRef = b["gcash_reference"] ?? b["bank_name"] ?? '';
-            return ascending ? aRef.compareTo(bRef) : bRef.compareTo(aRef);
-          });
-          break;
-        case 6: // payment date
-          filteredPayments.sort((a, b) {
-            final aDate = DateTime.tryParse(a["payment_date"] ?? '') ?? DateTime(1970);
-            final bDate = DateTime.tryParse(b["payment_date"] ?? '') ?? DateTime(1970);
-            return ascending ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
-          });
-          break;
-        case 7: // status
-          filteredPayments.sort((a, b) => ascending
-              ? (a["status"] ?? '').compareTo(b["status"] ?? '')
-              : (b["status"] ?? '').compareTo(a["status"] ?? ''));
-          break;
-      }
-    });
-  }
 
   Widget payFilters() {
     return Container(
@@ -526,7 +413,9 @@ class _MemDBState extends State<EncoderLoanPayRec> {
     );
   }
 
-  Widget payTable() {
+  Widget payTable(List<Map<String, dynamic>> loans) {
+    const boldStyle = TextStyle(fontWeight: FontWeight.bold);
+
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16),
@@ -548,46 +437,24 @@ class _MemDBState extends State<EncoderLoanPayRec> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                  ),
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     sortColumnIndex: sortColumnIndex,
                     sortAscending: isAscending,
                     columnSpacing: 58,
                     columns: [
-                      DataColumn(
-                          label: Text("Payment ID", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Loan ID", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Inst. No.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Amt.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          numeric: true,
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Payment Type", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("GCash Ref No.", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Bank Name", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Pay Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
-                      DataColumn(
-                          label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold)),
-                          onSort: (i, asc) => onSortPay(i, asc)),
+                      DataColumn(label: Text("Payment ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payment_id")),
+                      DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "approved_loan_id")),
+                      DataColumn(label: Text("Inst. No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "installment_number")),
+                      DataColumn(label: Text("Amt.", style: boldStyle), numeric: true, onSort: (i, asc) => onSort(i, asc, loans, "amount")),
+                      DataColumn(label: Text("Payment Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payment_type")),
+                      DataColumn(label: Text("GCash Ref No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "gcash_reference")),
+                      DataColumn(label: Text("Bank Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "bank_name")),
+                      DataColumn(label: Text("Pay Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "payment_date")),
+                      DataColumn(label: Text("Status", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "status")),
                     ],
-                    rows: filteredPayments
-                      .map((pay) => DataRow(cells: [
+                    rows: filteredPayments.map((pay) {
+                      return DataRow(cells: [
                         DataCell(Text("${pay["payment_id"] ?? ""}")),
                         DataCell(Text("${pay["approved_loan_id"] ?? ""}")),
                         DataCell(Text("${pay["installment_number"] ?? ""}")),
@@ -597,7 +464,8 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                         DataCell(Text("${pay["bank_name"] ?? ""}")),
                         DataCell(Text("${pay["payment_date"] ?? ""}")),
                         DataCell(Text("${pay["status"] ?? ""}")),
-                    ])).toList(),
+                      ]);
+                    }).toList(),
                   ),
                 ),
               ),
@@ -607,8 +475,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
       ),
     );
   }
-
-
+  
 
 
   @override
@@ -671,23 +538,24 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                             Expanded(
                               child: TabBarView(
                                 children: [
-                                  // ===== Loans Tab =====
+                                  
+                                  // Loans Tab
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       loanFilters(),
                                       SizedBox(height: 24),
-                                      loansTable(),
+                                      loansTable(loans)
                                     ],
                                   ),
 
-                                  // ===== Payments Tab (placeholder) =====
+                                  // Payments Tab
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       payFilters(),
                                       SizedBox(height: 24),
-                                      payTable(),
+                                      payTable(filteredPayments),
                                     ],
                                   ),
                                 ],
