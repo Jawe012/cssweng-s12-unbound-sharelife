@@ -64,6 +64,13 @@ class _TopNavBarState extends State<TopNavBar> {
           ),
           Spacer(),
           MenuOptions(),
+          IconButton(
+            tooltip: "Notifications",
+            icon: const Icon(Icons.notifications_outlined, size: 28, color: Colors.black),
+            onPressed: () {
+              Navigator.pushNamed(context, '/notifications');
+            },
+          ),
           ProfileBtn(onAccountSettings: widget.onAccountSettings),
         ],
       ),
