@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminFinanceManagement extends StatefulWidget {
   const AdminFinanceManagement({super.key});
@@ -163,10 +164,106 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
   }
 
   Future<void> _submitVoucher() async {
-    // TODO: Implement voucher submission to database
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Voucher submitted successfully'), backgroundColor: Colors.green),
-    );
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Not authenticated'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      // Validate required fields
+      if (refNumberController.text.isEmpty || payToController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please fill in all required fields'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      // Convert particulars and account rows to JSON
+      final particularsJson = particularsRows
+          .map((row) => {
+            'particular': row['particular'].text,
+            'amount': row['amount'].text,
+          })
+          .toList();
+
+      final accountRowsJson = accountRows
+          .map((row) => {
+            'title': row['title'].text,
+            'debit': row['debit'].text,
+            'credit': row['credit'].text,
+          })
+          .toList();
+
+      // Insert into database
+      await client.from('vouchers').insert({
+        'ref_number': refNumberController.text,
+        'pay_to': payToController.text,
+        'date_issued': dateController.text.isNotEmpty ? dateController.text : null,
+        'satellite_office': satelliteOfficeController.text,
+        'bank': bankController.text,
+        'check_number': checkNumberController.text,
+        'received_sum': receivedSumController.text.isNotEmpty 
+            ? double.tryParse(receivedSumController.text) 
+            : null,
+        'particulars': particularsJson,
+        'account_rows': accountRowsJson,
+        'prepared_name': preparedNameController.text,
+        'prepared_date': preparedDateController.text.isNotEmpty ? preparedDateController.text : null,
+        'checked_name': checkedNameController.text,
+        'checked_date': checkedDateController.text.isNotEmpty ? checkedDateController.text : null,
+        'approved_name': approvedNameController.text,
+        'approved_date': approvedDateController.text.isNotEmpty ? approvedDateController.text : null,
+        'received_name': receivedNameController.text,
+        'received_date': receivedDateController.text.isNotEmpty ? receivedDateController.text : null,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Voucher created successfully'), backgroundColor: Colors.green),
+      );
+
+      // Clear form
+      _clearForm();
+      _fetchVouchers();
+    } catch (e) {
+      print('Error submitting voucher: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _clearForm() {
+    refNumberController.clear();
+    payToController.clear();
+    dateController.clear();
+    satelliteOfficeController.clear();
+    bankController.clear();
+    checkNumberController.clear();
+    receivedSumController.clear();
+    
+    for (var row in particularsRows) {
+      row['particular'].clear();
+      row['amount'].clear();
+    }
+    for (var row in accountRows) {
+      row['title'].clear();
+      row['debit'].clear();
+      row['credit'].clear();
+    }
+    
+    preparedNameController.clear();
+    preparedDateController.clear();
+    checkedNameController.clear();
+    checkedDateController.clear();
+    approvedNameController.clear();
+    approvedDateController.clear();
+    receivedNameController.clear();
+    receivedDateController.clear();
   }
 
   void _downloadTemplate() {
@@ -180,20 +277,23 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
     setState(() => isLoadingVouchers = true);
 
     try {
-      // TODO: Fetch from actual vouchers table
-      // For now using mock data
+      final client = Supabase.instance.client;
+      
+      final response = await client
+          .from('vouchers')
+          .select('voucher_id, ref_number, pay_to, date_issued, bank, check_number, received_sum, created_at')
+          .order('created_at', ascending: false);
+
       setState(() {
-        vouchers = [
-          {'vouch_id': 'V-001', 'loan_id': 'L-1001', 'member_name': 'Juan Dela Cruz', 'amount': "2500", 'date_issued': '2025-11-10'},
-          {'vouch_id': 'V-002', 'loan_id': 'L-1002', 'member_name': 'Maria Santos', 'amount': "3200", 'date_issued': '2025-11-09'},
-          {'vouch_id': 'V-003', 'loan_id': 'L-1003', 'member_name': 'Pedro Ramirez', 'amount': "1800", 'date_issued': '2025-11-08'},
-          {'vouch_id': 'V-004', 'loan_id': 'L-1004', 'member_name': 'Ana Dizon', 'amount': "4100", 'date_issued': '2025-11-07'},
-          {'vouch_id': 'V-005', 'loan_id': 'L-1005', 'member_name': 'Liza Manalo', 'amount': "2750", 'date_issued': '2025-11-06'},
-        ];
+        vouchers = List<Map<String, dynamic>>.from(response);
         filteredVouchers = vouchers;
         isLoadingVouchers = false;
       });
     } catch (e) {
+      print('Error fetching vouchers: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading vouchers: $e'), backgroundColor: Colors.red),
+      );
       setState(() => isLoadingVouchers = false);
     }
   }
@@ -208,11 +308,11 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
         filteredVouchers = vouchers.where((voucher) {
           switch (searchType) {
             case 'Reference Number':
-              return voucher['ref_number'].toString().toLowerCase().contains(query);
+              return (voucher['ref_number'] ?? '').toString().toLowerCase().contains(query);
             case 'Date':
-              return voucher['date'].toString().contains(query);
+              return (voucher['date_issued'] ?? '').toString().contains(query);
             case 'Member Name':
-              return voucher['member_name'].toString().toLowerCase().contains(query);
+              return (voucher['pay_to'] ?? '').toString().toLowerCase().contains(query);
             default:
               return false;
           }
@@ -405,7 +505,7 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -471,7 +571,7 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -519,7 +619,7 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
             SizedBox(
               width: 180,
               child: DropdownButtonFormField<String>(
-                value: searchType,
+                initialValue: searchType,
                 decoration: InputDecoration(
                   labelText: "Search by",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -589,18 +689,18 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
                     child: DataTable(
                       columns: [
                         DataColumn(label: Text("Voucher ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Loan ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Member Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text("Reference #", style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text("Pay To", style: TextStyle(fontWeight: FontWeight.bold))),
                         DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
                         DataColumn(label: Text("Date Issued", style: TextStyle(fontWeight: FontWeight.bold))),
                       ],
                       rows: filteredVouchers.map((voucher) {
                         return DataRow(cells: [
-                          DataCell(Text(voucher['vouch_id'])),
-                          DataCell(Text(voucher['loan_id'])),
-                          DataCell(Text(voucher['member_name'])),
-                          DataCell(Text(voucher['amount'])),
-                          DataCell(Text(voucher['date_issued'])),
+                          DataCell(Text(voucher['voucher_id'] ?? '')),
+                          DataCell(Text(voucher['ref_number'] ?? '')),
+                          DataCell(Text(voucher['pay_to'] ?? '')),
+                          DataCell(Text((voucher['received_sum'] ?? 0).toString())),
+                          DataCell(Text(voucher['date_issued'] ?? '')),
                         ]);
                       }).toList(),
                     ),
