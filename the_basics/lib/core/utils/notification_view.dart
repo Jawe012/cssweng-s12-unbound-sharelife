@@ -8,44 +8,54 @@ class NotificationViewPage extends StatelessWidget {
     final notif = ModalRoute.of(context)!.settings.arguments as Map<String, String>;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
+      backgroundColor: Color(0xFFEFEFEF),
       appBar: AppBar(
-        title: const Text("Notification"),
+        title: Text("Notifications", style: TextStyle(color: Colors.black, fontSize: 26)),
         backgroundColor: Colors.white,
         elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(color: Colors.black),
       ),
 
       body: Center(
         child: Container(
-          width: 600,
-          margin: const EdgeInsets.all(20),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
+          width: double.infinity,
           
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SizedBox(height: 20),
+              
               Text(
                 notif["title"]!,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
 
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
+
+              Divider(height: 0.5, color: Colors.grey[300]),
 
               Text(
                 notif["date"]!,
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey),
               ),
-
-              const SizedBox(height: 20),
+              
+              SizedBox(height: 20),
 
               Text(
                 notif["body"]!,
-                style: const TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16),
               ),
             ],
           ),
