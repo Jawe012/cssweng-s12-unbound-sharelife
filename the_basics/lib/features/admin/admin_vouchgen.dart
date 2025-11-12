@@ -570,6 +570,7 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
       children: [
         Expanded(
           child: Container(
+            width: double.infinity,
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -763,17 +764,19 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
 
 
                               // TAB 2: VOUCHER SEARCH
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  
-                                  // Search Bar
-                                  vouchSearchBar(),
-                                  SizedBox(height: 24),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    
+                                    // Search Bar
+                                    vouchSearchBar(),
+                                    SizedBox(height: 24),
 
-                                  // Vouchers Table
-                                  vouchSearchTable(),
-                                ],
+                                    // Vouchers Table
+                                    Expanded(child: vouchSearchTable(),),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
