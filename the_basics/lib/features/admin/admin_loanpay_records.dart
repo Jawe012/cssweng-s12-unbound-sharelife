@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
-import 'package:the_basics/data/loan_data.dart';
-import 'package:the_basics/data/pay_data.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminLoanPayRec extends StatefulWidget {
   const AdminLoanPayRec({super.key});
@@ -14,13 +13,155 @@ class AdminLoanPayRec extends StatefulWidget {
 class _MemDBState extends State<AdminLoanPayRec> {
   int? sortColumnIndex;
   bool isAscending = true;
+  bool _isLoading = false;
 
-  // placeholder data
-  List<Map<String, dynamic>> loans = loansData;
-  List<Map<String, dynamic>> filteredPayments = payData;
-    List<Map<String, dynamic>> payments = payData;
+  // Real data from Supabase
+  List<Map<String, dynamic>> loans = [];
+  List<Map<String, dynamic>> filteredPayments = [];
+  List<Map<String, dynamic>> payments = [];
 
   double buttonHeight = 28;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _fetchLoans(),
+      _fetchPayments(),
+    ]);
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _fetchLoans() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*')
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedLoans = [];
+      
+      for (var loan in response) {
+        final memberId = loan['member_id'];
+        String memberName = 'Unknown Member';
+        
+        if (memberId != null) {
+          final memberResponse = await Supabase.instance.client
+              .from('members')
+              .select('first_name, last_name')
+              .eq('member_id', memberId)
+              .maybeSingle();
+          
+          if (memberResponse != null) {
+            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
+          }
+        }
+
+        final createdAt = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final year = createdAt.year;
+        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+
+        final startDate = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+
+        fetchedLoans.add({
+          'ref': loanId,
+          'memName': memberName,
+          'amt': loan['loan_amount'] ?? 0,
+          'interest': loan['interest_rate'] ?? 0,
+          'start': startDate.toString().split(' ')[0],
+          'due': dueDate.toString().split(' ')[0],
+          'instType': loan['repayment_term'] != null ? '${loan['repayment_term']} months' : 'N/A',
+          'totalInst': loan['repayment_term'] ?? 0,
+          'instAmt': loan['repayment_term'] != null && loan['repayment_term'] > 0
+              ? ((loan['loan_amount'] ?? 0) / loan['repayment_term']).toStringAsFixed(2)
+              : '0.00',
+          'status': loan['status'] ?? 'unknown',
+        });
+      }
+
+      setState(() {
+        loans = fetchedLoans;
+      });
+    } catch (e) {
+      print('Error fetching loans: $e');
+      setState(() {
+        loans = [];
+      });
+    }
+  }
+
+  Future<void> _fetchPayments() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('payments')
+          .select('*')
+          .order('payment_date', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedPayments = [];
+      
+      for (var payment in response) {
+        final loanId = payment['loan_id'];
+        String loanRef = 'Unknown';
+        
+        if (loanId != null) {
+          final loanResponse = await Supabase.instance.client
+              .from('approved_loans')
+              .select('application_id, created_at')
+              .eq('loan_id', loanId)
+              .maybeSingle();
+          
+          if (loanResponse != null) {
+            final createdAt = loanResponse['created_at'] != null 
+                ? DateTime.parse(loanResponse['created_at']) 
+                : DateTime.now();
+            final year = createdAt.year;
+            loanRef = 'LN-$year-${loanResponse['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+          }
+        }
+
+        fetchedPayments.add({
+          'paymentId': payment['payment_id']?.toString() ?? 'N/A',
+          'loanRef': loanRef,
+          'amount': payment['amount'] ?? 0,
+          'paymentDate': payment['payment_date'] ?? 'N/A',
+          'method': payment['payment_method'] ?? 'N/A',
+          'status': payment['status'] ?? 'pending',
+        });
+      }
+
+      setState(() {
+        payments = fetchedPayments;
+        filteredPayments = fetchedPayments;
+      });
+    } catch (e) {
+      print('Error fetching payments: $e');
+      setState(() {
+        payments = [];
+        filteredPayments = [];
+      });
+    }
+  }
+
+  DateTime _calculateDueDate(DateTime startDate, int? repaymentTerm) {
+    if (repaymentTerm == null || repaymentTerm == 0) {
+      return startDate.add(Duration(days: 30));
+    }
+    return DateTime(
+      startDate.year,
+      startDate.month + repaymentTerm,
+      startDate.day,
+    );
+  }
 
   void onSort<T>(
     int columnIndex,
@@ -82,12 +223,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8),
               ),
               onChanged: (value) {
-                setState(() {
-                  loans = loansData
-                      .where((loan) =>
-                          loan["ref"].toLowerCase().contains(value.toLowerCase()))
-                      .toList();
-                });
+                // Filter logic can be implemented here
               },
             ),
           ),
@@ -106,12 +242,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8),
               ),
               onChanged: (value) {
-                setState(() {
-                  loans = loansData
-                      .where((loan) =>
-                          loan["memName"].toLowerCase().contains(value.toLowerCase()))
-                      .toList();
-                });
+                // Filter logic can be implemented here
               },
             ),
           ),
@@ -171,7 +302,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
           SizedBox(
             height: buttonHeight,
             child: ElevatedButton(
-              onPressed: () {}, //_fetchPaymentHistory,
+              onPressed: _loadData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 minimumSize: Size(80, buttonHeight),
@@ -394,8 +525,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
           SizedBox(
             height: buttonHeight,
             child: ElevatedButton.icon(
-              onPressed: () {
-              },
+              onPressed: _loadData,
               icon: Icon(Icons.download, color: Colors.white),
               label: Text(
                 "Download",

@@ -2,18 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/cupertino.dart';
-
-//import 'package:pie_chart/pie_chart.dart';
-
-// placeholder data to see layout and functions
-import 'package:the_basics/data/active_loans.dart';
-import 'package:the_basics/data/overdue_loans.dart';
-import 'package:the_basics/data/member_loans.dart';
-import 'package:the_basics/data/pay_collection.dart';
-import 'package:the_basics/data/missed_pay.dart';
-import 'package:the_basics/data/vouch_revenue.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EncoderReports extends StatefulWidget {
   const EncoderReports({super.key});
@@ -27,14 +17,378 @@ class _EncoderReportsState extends State<EncoderReports> {
   bool isAscending = true;
   String? selectedReportType;
   double buttonHeight = 28;
+  bool _isLoading = false;
 
-  // Temporary placeholder data
-  final List<Map<String, dynamic>> activeLoansData = activeLoans;
-  final List<Map<String, dynamic>> overdueLoansData = overdueLoans;
-  final List<Map<String, dynamic>> memberLoansData = memberLoans;
-  final List<Map<String, dynamic>> missedPaymentsData = missedPay;
-  final List<Map<String, dynamic>> paymentCollectionData = payCollection;
-  final List<Map<String, dynamic>> voucherRevenueData = vouchRevenue;
+  // Real data from Supabase
+  List<Map<String, dynamic>> _activeLoansData = [];
+  List<Map<String, dynamic>> _overdueLoansData = [];
+  List<Map<String, dynamic>> _memberLoansData = [];
+  List<Map<String, dynamic>> _paymentCollectionData = [];
+  List<Map<String, dynamic>> _voucherRevenueData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _fetchActiveLoans(),
+      _fetchOverdueLoans(),
+      _fetchMemberLoanSummary(),
+      _fetchPaymentCollections(),
+      _fetchVoucherRevenue(),
+    ]);
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _fetchActiveLoans() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedLoans = [];
+      
+      for (var loan in response) {
+        final memberId = loan['member_id'];
+        String memberName = 'Unknown Member';
+        
+        if (memberId != null) {
+          final memberResponse = await Supabase.instance.client
+              .from('members')
+              .select('first_name, last_name')
+              .eq('member_id', memberId)
+              .maybeSingle();
+          
+          if (memberResponse != null) {
+            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
+          }
+        }
+
+        final createdAt = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final year = createdAt.year;
+        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+
+        final startDate = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+
+        fetchedLoans.add({
+          'loanID': loanId,
+          'memName': memberName,
+          'loanType': loan['loan_type'] ?? 'Regular',
+          'startDate': startDate.toString().split(' ')[0],
+          'dueDate': dueDate.toString().split(' ')[0],
+          'principalAmt': '₱${(loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
+          'remainBal': '₱${(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
+        });
+      }
+
+      setState(() {
+        _activeLoansData = fetchedLoans;
+      });
+    } catch (e) {
+      print('Error fetching active loans: $e');
+      setState(() {
+        _activeLoansData = [];
+      });
+    }
+  }
+
+  Future<void> _fetchOverdueLoans() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*')
+          .eq('status', 'overdue')
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedLoans = [];
+      
+      for (var loan in response) {
+        final memberId = loan['member_id'];
+        String memberName = 'Unknown Member';
+        String contactNo = 'N/A';
+        
+        if (memberId != null) {
+          final memberResponse = await Supabase.instance.client
+              .from('members')
+              .select('first_name, last_name, contact_number')
+              .eq('member_id', memberId)
+              .maybeSingle();
+          
+          if (memberResponse != null) {
+            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
+            contactNo = memberResponse['contact_number'] ?? 'N/A';
+          }
+        }
+
+        final createdAt = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final year = createdAt.year;
+        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+
+        final startDate = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+        final daysOverdue = DateTime.now().difference(dueDate).inDays;
+
+        fetchedLoans.add({
+          'loanID': loanId,
+          'memName': memberName,
+          'dueDate': dueDate.toString().split(' ')[0],
+          'daysOverdue': daysOverdue > 0 ? daysOverdue : 0,
+          'remainBal': '₱${(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
+          'contactNo': contactNo,
+        });
+      }
+
+      setState(() {
+        _overdueLoansData = fetchedLoans;
+      });
+    } catch (e) {
+      print('Error fetching overdue loans: $e');
+      setState(() {
+        _overdueLoansData = [];
+      });
+    }
+  }
+
+  Future<void> _fetchMemberLoanSummary() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*')
+          .order('member_id', ascending: true);
+
+      Map<String, Map<String, dynamic>> memberSummary = {};
+      
+      for (var loan in response) {
+        final memberId = loan['member_id']?.toString() ?? 'unknown';
+        
+        if (!memberSummary.containsKey(memberId)) {
+          String memberName = 'Unknown Member';
+          
+          if (loan['member_id'] != null) {
+            final memberResponse = await Supabase.instance.client
+                .from('members')
+                .select('first_name, last_name')
+                .eq('member_id', loan['member_id'])
+                .maybeSingle();
+            
+            if (memberResponse != null) {
+              memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
+            }
+          }
+          
+          memberSummary[memberId] = {
+            'memName': memberName,
+            'totalLoans': 0,
+            'totalBorrowed': 0.0,
+            'totalPaid': 0.0,
+            'remainBal': 0.0,
+            'loanStatus': 'active',
+          };
+        }
+        
+        memberSummary[memberId]!['totalLoans'] += 1;
+        memberSummary[memberId]!['totalBorrowed'] += (loan['loan_amount'] ?? 0);
+        memberSummary[memberId]!['remainBal'] += (loan['remaining_balance'] ?? loan['loan_amount'] ?? 0);
+        
+        if (loan['status'] == 'overdue') {
+          memberSummary[memberId]!['loanStatus'] = 'overdue';
+        }
+      }
+
+      final List<Map<String, dynamic>> fetchedSummary = memberSummary.values.map((summary) {
+        summary['totalPaid'] = summary['totalBorrowed'] - summary['remainBal'];
+        return {
+          'memName': summary['memName'],
+          'totalLoans': summary['totalLoans'],
+          'totalBorrowed': '₱${summary['totalBorrowed'].toStringAsFixed(2)}',
+          'totalPaid': '₱${summary['totalPaid'].toStringAsFixed(2)}',
+          'remainBal': '₱${summary['remainBal'].toStringAsFixed(2)}',
+          'loanStatus': summary['loanStatus'],
+        };
+      }).toList();
+
+      setState(() {
+        _memberLoansData = fetchedSummary;
+      });
+    } catch (e) {
+      print('Error fetching member loan summary: $e');
+      setState(() {
+        _memberLoansData = [];
+      });
+    }
+  }
+
+  Future<void> _fetchPaymentCollections() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('payments')
+          .select('*')
+          .order('payment_date', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedPayments = [];
+      
+      for (var payment in response) {
+        final loanId = payment['loan_id'];
+        String loanRef = 'Unknown';
+        
+        if (loanId != null) {
+          final loanResponse = await Supabase.instance.client
+              .from('approved_loans')
+              .select('application_id, created_at')
+              .eq('loan_id', loanId)
+              .maybeSingle();
+          
+          if (loanResponse != null) {
+            final createdAt = loanResponse['created_at'] != null 
+                ? DateTime.parse(loanResponse['created_at']) 
+                : DateTime.now();
+            final year = createdAt.year;
+            loanRef = 'LN-$year-${loanResponse['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+          }
+        }
+
+        String collectedBy = 'Unknown';
+        final staffId = payment['staff_id'];
+        if (staffId != null) {
+          final staffResponse = await Supabase.instance.client
+              .from('staff')
+              .select('first_name, last_name')
+              .eq('staff_id', staffId)
+              .maybeSingle();
+          
+          if (staffResponse != null) {
+            collectedBy = '${staffResponse['first_name']} ${staffResponse['last_name']}';
+          }
+        }
+
+        fetchedPayments.add({
+          'paymentID': payment['payment_id']?.toString() ?? 'N/A',
+          'loanRef': loanRef,
+          'amtPaid': '₱${(payment['amount'] ?? 0).toStringAsFixed(2)}',
+          'paymentDate': payment['payment_date'] ?? 'N/A',
+          'payMethod': payment['payment_method'] ?? 'N/A',
+          'collectedBy': collectedBy,
+        });
+      }
+
+      setState(() {
+        _paymentCollectionData = fetchedPayments;
+      });
+    } catch (e) {
+      print('Error fetching payment collections: $e');
+      setState(() {
+        _paymentCollectionData = [];
+      });
+    }
+  }
+
+  Future<void> _fetchVoucherRevenue() async {
+    try {
+      final loansResponse = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*');
+
+      final paymentsResponse = await Supabase.instance.client
+          .from('payments')
+          .select('*');
+
+      double totalDisbursed = 0;
+      double totalPaid = 0;
+      double totalOverdue = 0;
+
+      for (var loan in loansResponse) {
+        totalDisbursed += (loan['loan_amount'] ?? 0);
+        
+        if (loan['status'] == 'overdue') {
+          totalOverdue += (loan['remaining_balance'] ?? loan['loan_amount'] ?? 0);
+        }
+      }
+
+      for (var payment in paymentsResponse) {
+        totalPaid += (payment['amount'] ?? 0);
+      }
+
+      final outstanding = totalDisbursed - totalPaid;
+
+      setState(() {
+        _voucherRevenueData = [
+          {
+            'metric': 'Total Disbursed',
+            'value': '₱${totalDisbursed.toStringAsFixed(2)}',
+          },
+          {
+            'metric': 'Total Paid',
+            'value': '₱${totalPaid.toStringAsFixed(2)}',
+          },
+          {
+            'metric': 'Outstanding Balance',
+            'value': '₱${outstanding.toStringAsFixed(2)}',
+          },
+          {
+            'metric': 'Overdue Amount',
+            'value': '₱${totalOverdue.toStringAsFixed(2)}',
+          },
+        ];
+      });
+    } catch (e) {
+      print('Error fetching voucher revenue: $e');
+      setState(() {
+        _voucherRevenueData = [];
+      });
+    }
+  }
+
+  DateTime _calculateDueDate(DateTime startDate, int? repaymentTerm) {
+    if (repaymentTerm == null || repaymentTerm == 0) {
+      return startDate.add(Duration(days: 30));
+    }
+    return DateTime(
+      startDate.year,
+      startDate.month + repaymentTerm,
+      startDate.day,
+    );
+  }
+
+  Widget _emptyState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget buttonsAndFiltersRow() {
     return Row(
@@ -508,17 +862,27 @@ class _EncoderReportsState extends State<EncoderReports> {
                                       
                                       // main table (sorting by time period not yet implemented)
                                       if (selectedReportType == "Active Loans")
-                                        activeLoansTable(activeLoansData)
+                                        _activeLoansData.isEmpty 
+                                          ? _emptyState('No active loans found')
+                                          : activeLoansTable(_activeLoansData)
                                       else if (selectedReportType == "Overdue Loans")
-                                        overdueLoansTable(overdueLoansData)
+                                        _overdueLoansData.isEmpty 
+                                          ? _emptyState('No overdue loans found')
+                                          : overdueLoansTable(_overdueLoansData)
                                       else if (selectedReportType == "Member Loan Summary")
-                                        memberLoansTable(memberLoansData)
+                                        _memberLoansData.isEmpty 
+                                          ? _emptyState('No member loan data found')
+                                          : memberLoansTable(_memberLoansData)
                                       else if (selectedReportType == "Payment Collection")
-                                        payCollectionTable(paymentCollectionData)
+                                        _paymentCollectionData.isEmpty 
+                                          ? _emptyState('No payment collections found')
+                                          : payCollectionTable(_paymentCollectionData)
                                       else if (selectedReportType == "Missed Payments")
-                                        missedPayTable(missedPaymentsData)
+                                        _emptyState('Missed payments feature coming soon')
                                       else if (selectedReportType == "Voucher & Revenue Summary")
-                                        voucherRevenueTable(voucherRevenueData)
+                                        _voucherRevenueData.isEmpty 
+                                          ? _emptyState('No revenue data found')
+                                          : voucherRevenueTable(_voucherRevenueData)
                                       else
                                         Column(
                                           mainAxisAlignment: MainAxisAlignment.center,

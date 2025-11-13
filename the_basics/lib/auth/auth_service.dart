@@ -1,6 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:the_basics/core/utils/profile_storage.dart';
 
 class AuthService {
@@ -9,19 +8,19 @@ class AuthService {
   // Test connection to Supabase
   Future<bool> testConnection() async {
     try {
-      print('Testing Supabase connection...');
+      debugPrint('Testing Supabase connection...');
       
       // Simple health check - try to get session (doesn't require auth)
       final session = _supabase.auth.currentSession;
       if (session != null) {
-        print('Connection test successful. Current session: ${session.user.id}');
+        debugPrint('Connection test successful. Current session: ${session.user.id}');
       } else {
-        print('Connection test successful. No current session.');
+        debugPrint('Connection test successful. No current session.');
       }
       return true;
     } catch (e) {
-      print('Connection test failed: $e');
-      print('Error type: ${e.runtimeType}');
+      debugPrint('Connection test failed: $e');
+      debugPrint('Error type: ${e.runtimeType}');
       return false;
     }
   }
@@ -31,11 +30,11 @@ class AuthService {
     String input_credential, String password) async {
     String? email_credential;
 
-    print('[signIn] input credential: $input_credential');
+  debugPrint('[signIn] input credential: $input_credential');
 
     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(input_credential)) {
       // input is not an email (treat as username)
-      print('[signIn] Detected username input. Looking up email by username...');
+        debugPrint('[signIn] Detected username input. Looking up email by username...');
       try {
         final userByUsername = await _supabase
             .from('members')
@@ -43,7 +42,7 @@ class AuthService {
             .eq('username', input_credential)
             .maybeSingle();
 
-        print('[signIn] userByUsername result: $userByUsername');
+  debugPrint('[signIn] userByUsername result: $userByUsername');
 
         final staffByUsername = await _supabase
             .from('staff')
@@ -51,36 +50,36 @@ class AuthService {
             .eq('username', input_credential)
             .maybeSingle();
 
-        print('[signIn] staffByUsername result: $staffByUsername');
+  debugPrint('[signIn] staffByUsername result: $staffByUsername');
 
         if (userByUsername != null && userByUsername['email_address'] != null) {
           email_credential = userByUsername['email_address'];
         } else if (staffByUsername != null && staffByUsername['email_address'] != null) {
           email_credential = staffByUsername['email_address'];
         } else {
-          print('[signIn] No user found with that username');
+          debugPrint('[signIn] No user found with that username');
           return Future.error('No user found with that username');
         }
       } catch (e) {
-        print('[signIn] Error fetching user by username: $e');
+  debugPrint('[signIn] Error fetching user by username: $e');
         return Future.error('Error fetching user by username: $e');
       }
     } else {
       // input is an email
-      email_credential = input_credential.trim().toLowerCase();
-      print('[signIn] Detected email input. Using email: $email_credential');
+  email_credential = input_credential.trim().toLowerCase();
+  debugPrint('[signIn] Detected email input. Using email: $email_credential');
     }
 
-    print('[signIn] Calling Supabase signInWithPassword for $email_credential');
+  debugPrint('[signIn] Calling Supabase signInWithPassword for $email_credential');
     try {
       final resp = await _supabase.auth.signInWithPassword(
         email: email_credential,
         password: password,
       );
-      print('[signIn] Supabase response: $resp');
+  debugPrint('[signIn] Supabase response: $resp');
       return resp;
     } catch (e) {
-      print('[signIn] Supabase signIn error: $e');
+  debugPrint('[signIn] Supabase signIn error: $e');
       rethrow;
     }
   }
@@ -110,7 +109,7 @@ class AuthService {
 
       return memberRecord?['role'] as String?;
     } catch (e) {
-      print("Error fetching user role: $e");
+      debugPrint("Error fetching user role: $e");
       return null;
     }
   }
@@ -133,18 +132,18 @@ class AuthService {
       RegExp passComplexity = RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+\$');
       
       if (exists) {
-        print('[staffSignUp] User already exists with that email/username: $email / $username');
+    debugPrint('[staffSignUp] User already exists with that email/username: $email / $username');
         return Future.error('User already exists with that email/username');
       } else if (password.length < 6) {
-        print('[staffSignUp] Password too short');
+  debugPrint('[staffSignUp] Password too short');
         return Future.error('Password must be at least 6 characters long');
       } else if (!passComplexity.hasMatch(password)) {
-        print ('[staffSignUp] Password does not meet complexity requirements');
+  debugPrint ('[staffSignUp] Password does not meet complexity requirements');
         return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
       } else {
         
         // Save staff profile data locally before signup (include role)
-        print('[staffSignUp] Saving pending staff profile for: $email');
+  debugPrint('[staffSignUp] Saving pending staff profile for: $email');
         await ProfileStorage.savePendingProfile({
           'email': email.trim().toLowerCase(),
           'username': username.trim(),
@@ -156,22 +155,55 @@ class AuthService {
         });
 
         // Only do the auth signup - no members table insert yet
-        print('[staffSignUp] Calling Supabase signUp for: $email');
+  debugPrint('[staffSignUp] Calling Supabase signUp for: $email');
         final response = await _supabase.auth.signUp(
           email: email,
           password: password,
         );
 
-        print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
+  debugPrint('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
         return response;
       } 
     } catch (e) {
-      print('[staffSignUp] Error checking existing user: $e');
+      debugPrint('[staffSignUp] Error checking existing user: $e');
       return Future.error('Error checking existing user: $e');
     }
   }
 
-  // NEW: Staff sign up using same pending-profile flow as members
+  // Reset user password
+  // If `redirectTo` is provided, Supabase will include it in the recovery link.
+  Future<void> sendPasswordResetEmail(String email, {String? redirectTo}) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    try {
+      debugPrint('[passwordReset] Sending password reset for $normalizedEmail (redirectTo: $redirectTo)');
+      // Supabase Flutter provides a reset helper; some versions accept redirectTo.
+      await _supabase.auth.resetPasswordForEmail(
+        normalizedEmail,
+        redirectTo: redirectTo,
+      );
+      debugPrint('[passwordReset] Reset email request submitted.');
+    } catch (e) {
+      debugPrint('[passwordReset] Error sending reset email: $e');
+      rethrow;
+    }
+  }
+
+  // Update authenticated user's password. Call this after the user follows the
+  // recovery link and you have them enter a new password in-app.
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      debugPrint('[updatePassword] Updating password for current user');
+      // UserAttributes is provided by supabase_flutter; set the password field.
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      debugPrint('[updatePassword] Password update request submitted.');
+    } catch (e) {
+      debugPrint('[updatePassword] Error updating password: $e');
+      rethrow;
+    }
+  }
+
+
+  // Staff sign up using same pending-profile flow as members
   Future<AuthResponse> staffSignUp(
     String email,
     String password, {
@@ -353,11 +385,11 @@ class AuthService {
             .from('staff')
             .select('id, username, email_address')
             .eq('username', trimmedUsername);
-        
-        print('staffByUsername raw: $staffByUsername');
-        
-        if (staffByUsername != null && staffByUsername is List && staffByUsername.isNotEmpty) {
-          print('checkUserExists: found by username in staff: $staffByUsername');
+
+        debugPrint('staffByUsername raw: $staffByUsername');
+
+        if (staffByUsername.isNotEmpty) {
+          debugPrint('checkUserExists: found by username in staff: $staffByUsername');
           return true;
         }
 
@@ -366,17 +398,17 @@ class AuthService {
             .from('members')
             .select('id')
             .eq('username', trimmedUsername);
-        if (memberByUsername != null && memberByUsername is List && memberByUsername.isNotEmpty) {
-          print('checkUserExists: found by username in members: $memberByUsername');
+        if (memberByUsername.isNotEmpty) {
+          debugPrint('checkUserExists: found by username in members: $memberByUsername');
           return true;
         }
       }
 
       // Not found
-      print('checkUserExists: not found');
+      debugPrint('checkUserExists: not found');
       return false;
     } catch (e) {
-      print('checkUserExists error: $e');
+      debugPrint('checkUserExists error: $e');
       rethrow;
     }
   }

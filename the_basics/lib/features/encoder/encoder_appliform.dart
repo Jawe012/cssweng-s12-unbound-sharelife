@@ -488,6 +488,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 items: [
                   "3 months",
                   "6 months",
+                  "12 months",
                 ],
               ),
             ),

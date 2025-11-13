@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/login.dart';
+import 'package:the_basics/auth/reset_password.dart';
 import 'package:the_basics/features/account_settings.dart';
 import 'package:the_basics/features/profile_page.dart';
 
@@ -64,20 +65,30 @@ class _MainAppState extends State<MainApp> {
   void _setupAuthListener() {
     supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
-      print("<!> Auth event: $event"); // ← This should appear when you sign in
+  debugPrint("<!> Auth event: $event"); // ← This should appear when you sign in
 
       if (event == AuthChangeEvent.signedIn) {
-        print("<✓> User signed in — checking pending profile...");
+  debugPrint("<✓> User signed in — checking pending profile...");
         final pending = await ProfileStorage.getPendingProfile();
-        print("<⋯> Pending profile: $pending");
+  debugPrint("<⋯> Pending profile: $pending");
 
         if (pending != null) { 
-            print('<◍> Claiming profile...');
+            debugPrint('<◍> Claiming profile...');
             await authService.tryClaimPendingProfile();
         }
 
         await _routeUserAfterLogin();
+        if (!mounted) return; // guard against using context after async work
       }
+
+        // Handle password recovery event: route user to reset-password page
+        if (event == AuthChangeEvent.passwordRecovery) {
+          debugPrint("<±> Password recovery event detected — routing to reset page...");
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            Navigator.pushNamed(context, '/reset-password', arguments: {'recovery': true});
+          }
+        }
     });
   }
 
@@ -85,9 +96,9 @@ class _MainAppState extends State<MainApp> {
     final role = await authService.getUserRole();
 
     if (role == null) {
-      print("Routing user with role: member");
+      debugPrint("Routing user with role: member");
     } else {
-      print("Routing user with role: $role");
+      debugPrint("Routing user with role: $role");
     }
 
     final context = navigatorKey.currentContext;
@@ -117,6 +128,7 @@ class _MainAppState extends State<MainApp> {
         '/home':(context) => MemberDB(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
+        '/reset-password': (context) => ResetPasswordPage(),
 
         '/notifications': (context) => const NotificationsListPage(),
     '/notification-view': (context) => const NotificationViewPage(),

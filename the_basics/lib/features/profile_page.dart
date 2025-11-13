@@ -4,6 +4,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,6 +23,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
+  bool _loading = true;
+  bool _notSignedIn = false;
+
+  // profile fields
+  String _firstName = '';
+  String _lastName = '';
+  String _role = '';
+  String _username = '';
+  String _dob = '';
+  String _contactnum = '';
+  String _email = '';
+  String _recogDate = '';
+  String _status = '';
+  String _loanStatus = '';
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -64,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
 
-  Widget _personalInfo(String username, String DOB, String contactnum, String email) {
+  Widget _personalInfo(String username, String dob, String contactnum, String email) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,7 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         SizedBox(height: contentgap),
         Text(
-          "Date of Birth: $DOB",
+          "Date of Birth: $dob",
           style: TextStyle(fontSize: contentsize, color: Colors.black)
         ),
         SizedBox(height: contentgap),
@@ -123,6 +138,66 @@ class _ProfilePageState extends State<ProfilePage> {
         SizedBox(height: contentgap),
       ]
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _loading = true;
+      _notSignedIn = false;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        setState(() {
+          _notSignedIn = true;
+          _loading = false;
+        });
+        return;
+      }
+
+      _email = user.email ?? '';
+
+      // Try staff first
+      final staffResp = await supabase.from('staff').select('first_name,last_name,role,username,contact_no,email_address,date_of_birth').eq('email_address', _email).maybeSingle();
+      if (staffResp != null) {
+        setState(() {
+          _firstName = (staffResp['first_name'] ?? '') as String;
+          _lastName = (staffResp['last_name'] ?? '') as String;
+          _role = (staffResp['role'] ?? '') as String;
+          _username = (staffResp['username'] ?? '') as String;
+          _contactnum = (staffResp['contact_no'] ?? '') as String;
+          _dob = (staffResp['date_of_birth'] ?? '') as String;
+        });
+      } else {
+        // Try members table
+        final memResp = await supabase.from('members').select('first_name,last_name,role,username,contact_no,email_address,date_of_birth,recognition_date,status,loan_status').eq('email_address', _email).maybeSingle();
+        if (memResp != null) {
+          setState(() {
+            _firstName = (memResp['first_name'] ?? '') as String;
+            _lastName = (memResp['last_name'] ?? '') as String;
+            _role = (memResp['role'] ?? '') as String;
+            _username = (memResp['username'] ?? '') as String;
+            _contactnum = (memResp['contact_no'] ?? '') as String;
+            _dob = (memResp['date_of_birth'] ?? '') as String;
+            _recogDate = (memResp['recognition_date'] ?? '') as String;
+            _status = (memResp['status'] ?? '') as String;
+            _loanStatus = (memResp['loan_status'] ?? '') as String;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -171,17 +246,35 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           SizedBox(height: 40),
-                          _profileHeading("Mark Anthony", "Garcia", "Member"),
-                          SizedBox(height: 80),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _personalInfo("Mark Anthony", "January 1, 1970", "0917 123 4567", "markanthony@email.com"),
-                              SizedBox(width: 80),
-                              _loanInfo("January 1, 2020", "Active", "Active"),
-                            ],
-                          )
+                          if (_loading) ...[
+                            const SizedBox(height: 80),
+                            const Center(child: CircularProgressIndicator()),
+                          ] else if (_notSignedIn) ...[
+                            const SizedBox(height: 40),
+                            const Text('No user signed in', style: TextStyle(fontSize: 18)),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pushNamed(context, '/login'),
+                              child: const Text('Go to Login'),
+                            )
+                          ] else ...[
+                            _profileHeading(_firstName.isNotEmpty ? _firstName : 'First', _lastName.isNotEmpty ? _lastName : 'Last', _role.isNotEmpty ? _role : 'Member'),
+                            SizedBox(height: 80),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _personalInfo(
+                                  _username.isNotEmpty ? _username : '${_firstName.isNotEmpty ? _firstName : 'First'} ${_lastName.isNotEmpty ? _lastName : 'Last'}',
+                                  _dob.isNotEmpty ? _dob : 'N/A',
+                                  _contactnum.isNotEmpty ? _contactnum : 'N/A',
+                                  _email.isNotEmpty ? _email : 'no-email',
+                                ),
+                                SizedBox(width: 80),
+                                _loanInfo(_recogDate.isNotEmpty ? _recogDate : 'N/A', _status.isNotEmpty ? _status : 'N/A', _loanStatus.isNotEmpty ? _loanStatus : 'N/A'),
+                              ],
+                            )
+                          ]
                         ],
                       ),
                     ),
@@ -194,5 +287,5 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
 
-    }
+  }
   }
