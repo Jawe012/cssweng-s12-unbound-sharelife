@@ -36,16 +36,6 @@ class _AdminReportsState extends State<AdminReports> {
   final List<Map<String, dynamic>> paymentCollectionData = payCollection;
   final List<Map<String, dynamic>> voucherRevenueData = vouchRevenue;
 
-/*  IDEYUH
-    since diff yung filter kada table, make switch cases with
-    diff listtiles or children that will be appended to the final
-    row and returned by the function when done. parameters
-    include numbers that will indicate which of these will be 
-    included for that table's filters. 0 is a spacer.
-
-    note: can we even append this huhu
-*/
-
   Widget buttonsAndFiltersRow() {
     return Row(
       children: [
