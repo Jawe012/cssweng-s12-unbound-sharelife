@@ -25,6 +25,8 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
   bool isLoading = false;
   bool isSaving = false;
   int? staffId;
+  String _role = '';
+  bool _roleLoaded = false;
 
   @override
   void initState() {
@@ -59,7 +61,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
       final supabase = Supabase.instance.client;
       final response = await supabase
           .from('staff')
-          .select('first_name, last_name, date_of_birth, email_address, phone_number, home_address')
+          .select('first_name, last_name, date_of_birth, email_address, phone_number, home_address, role')
           .eq('id', id)
           .maybeSingle();
 
@@ -71,6 +73,8 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
           emailController.text = response['email_address'] ?? '';
           phoneController.text = response['phone_number'] ?? '';
           addressController.text = response['home_address'] ?? '';
+          _role = (response['role'] ?? '').toString();
+          _roleLoaded = true;
           isLoading = false;
         });
       }
@@ -142,6 +146,35 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
     }
   }
 
+  Future<void> _toggleRevoke() async {
+    if (staffId == null) return;
+    setState(() => isSaving = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+      final newRole = (_role.toLowerCase() == 'revoked') ? 'encoder' : 'revoked';
+
+      await supabase
+          .from('staff')
+          .update({'role': newRole})
+          .eq('id', staffId!);
+
+      setState(() {
+        _role = newRole;
+        isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(newRole == 'revoked' ? 'Staff role revoked' : 'Staff role restored'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      setState(() => isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating role: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,11 +210,11 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Edit Staff Details",
+                                      "Staff Details",
                                       style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                                     ),
                                     Text(
-                                      "Change Staff Information",
+                                      "Staff Information",
                                       style: TextStyle(color: Colors.grey, fontSize: 14),
                                     ),
                                   ],
@@ -341,6 +374,44 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                                         "Confirm Edits",
                                         style: TextStyle(color: Colors.white, fontSize: 16),
                                       ),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+
+                            // Revoke / Restore Role Button (wait for role to load before deciding label)
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: (isSaving || isLoading || !_roleLoaded) ? null : _toggleRevoke,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: !_roleLoaded
+                                      ? Colors.grey
+                                      : (_role.toLowerCase() == 'revoked' ? Colors.green : Colors.red),
+                                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: isSaving
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : (!_roleLoaded
+                                        ? Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                                            child: Text(
+                                              'Loading...',
+                                              style: TextStyle(color: Colors.white, fontSize: 16),
+                                            ),
+                                          )
+                                        : Text(
+                                            _role.toLowerCase() == 'revoked' ? 'Restore' : 'Revoke',
+                                            style: TextStyle(color: Colors.white, fontSize: 16),
+                                          )),
                               ),
                             ),
                           ],

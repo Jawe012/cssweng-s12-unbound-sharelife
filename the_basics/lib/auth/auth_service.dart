@@ -72,14 +72,49 @@ class AuthService {
 
   debugPrint('[signIn] Calling Supabase signInWithPassword for $email_credential');
     try {
+      // Pre-check role by email to prevent a signed-in session from being used
+      try {
+        if (email_credential != null && email_credential.isNotEmpty) {
+          dynamic staffRec = await _supabase.from('staff').select('role').eq('email_address', email_credential).maybeSingle();
+          String? preRole = staffRec != null && staffRec['role'] != null ? staffRec['role'].toString() : null;
+          if (preRole == null) {
+            dynamic memberRec = await _supabase.from('members').select('role').eq('email_address', email_credential).maybeSingle();
+            preRole = memberRec != null && memberRec['role'] != null ? memberRec['role'].toString() : null;
+          }
+          if (preRole != null && preRole.toLowerCase() == 'revoked') {
+            debugPrint('[signIn] Pre-check: account revoked for $email_credential');
+            return Future.error('Your account has been revoked. Contact an administrator for assistance.');
+          }
+        }
+      } catch (e) {
+        debugPrint('[signIn] Pre-check role query failed: $e');
+        // continue to attempt sign-in; will perform post-check too
+      }
+
       final resp = await _supabase.auth.signInWithPassword(
         email: email_credential,
         password: password,
       );
-  debugPrint('[signIn] Supabase response: $resp');
+      debugPrint('[signIn] Supabase response: $resp');
+
+      // After successful sign in, double-check role and block revoked accounts
+      try {
+        final role = await getUserRole();
+        debugPrint('[signIn] Resolved role for user: $role');
+        if (role != null && role.toLowerCase() == 'revoked') {
+          // immediately sign out to prevent access
+          await _supabase.auth.signOut();
+          debugPrint('[signIn] Access denied: account revoked');
+          return Future.error('Your account has been revoked. Contact an administrator for assistance.');
+        }
+      } catch (e) {
+        debugPrint('[signIn] Error while checking role after sign-in: $e');
+        // allow sign-in to continue if role check fails unexpectedly
+      }
+
       return resp;
     } catch (e) {
-  debugPrint('[signIn] Supabase signIn error: $e');
+      debugPrint('[signIn] Supabase signIn error: $e');
       rethrow;
     }
   }

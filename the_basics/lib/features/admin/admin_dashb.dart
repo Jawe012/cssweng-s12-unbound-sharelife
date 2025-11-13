@@ -303,13 +303,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       },
                     child: const Text("Edit"),
                   ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "Revoke",
-                        style: TextStyle(color: Color(0xFF8B0000)),
-                      ),
-                    ),
                   ] else ...[
                     TextButton(onPressed: () {}, child: const Text("Activate")),
                     TextButton(onPressed: () {}, child: const Text("Delete")),
