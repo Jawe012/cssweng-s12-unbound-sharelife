@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -264,13 +266,6 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
     approvedDateController.clear();
     receivedNameController.clear();
     receivedDateController.clear();
-  }
-
-  void _downloadTemplate() {
-    // TODO: Implement template download
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Template download coming soon')),
-    );
   }
 
   Future<void> _fetchVouchers() async {
@@ -783,14 +778,89 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
                                           "Check Voucher",
                                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                         ),
-                                        ElevatedButton.icon(
-                                          onPressed: _downloadTemplate,
-                                          icon: Icon(Icons.download, color: Colors.white, size: 18),
-                                          label: Text("Download Template", style: TextStyle(color: Colors.white)),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.black,
-                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                          ),
+                                        ExportDropdownButton(
+                                          height: 40,
+                                          minWidth: 180,
+                                          onExportPdf: () async {
+                                            // Build voucher data from form
+                                            final Map<String, dynamic> voucherData = {
+                                              'voucher_id': refNumberController.text.isNotEmpty ? refNumberController.text : 'N/A',
+                                              'date_issued': dateController.text.isNotEmpty ? dateController.text : DateTime.now().toString().split(' ')[0],
+                                              'pay_to': payToController.text.isNotEmpty ? payToController.text : 'N/A',
+                                              'satellite_office': satelliteOfficeController.text,
+                                              'bank': bankController.text,
+                                              'check_number': checkNumberController.text,
+                                              'received_sum': double.tryParse(receivedSumController.text) ?? 0.0,
+                                              'particulars': particularsRows.map((row) => {
+                                                'description': (row['particular'] as TextEditingController).text,
+                                                'amount': double.tryParse((row['amount'] as TextEditingController).text) ?? 0.0,
+                                              }).toList(),
+                                              'account_rows': accountRows.map((row) => {
+                                                'account': (row['title'] as TextEditingController).text,
+                                                'debit': double.tryParse((row['debit'] as TextEditingController).text) ?? 0.0,
+                                                'credit': double.tryParse((row['credit'] as TextEditingController).text) ?? 0.0,
+                                              }).toList(),
+                                              'prepared_name': preparedNameController.text,
+                                              'prepared_date': preparedDateController.text,
+                                              'checked_name': checkedNameController.text,
+                                              'checked_date': checkedDateController.text,
+                                              'approved_name': approvedNameController.text,
+                                              'approved_date': approvedDateController.text,
+                                              'received_name': receivedNameController.text,
+                                              'received_date': receivedDateController.text,
+                                            };
+                                            
+                                            try {
+                                              final bytes = await ExportService.buildCheckVoucherPdf(voucherData);
+                                              final result = await ExportService.sharePdf(bytes, 
+                                                filename: 'check_voucher_${refNumberController.text.isNotEmpty ? refNumberController.text : DateTime.now().millisecondsSinceEpoch}.pdf'
+                                              );
+                                              if (result.contains('/') || result.contains('\\')) {
+                                                ExportService.showExportMessage(context, 'Check Voucher PDF saved to: $result');
+                                              } else {
+                                                ExportService.showExportMessage(context, 'Check Voucher PDF exported successfully');
+                                              }
+                                            } catch (e) {
+                                              ExportService.showExportMessage(context, 'Export failed: $e');
+                                            }
+                                          },
+                                          onExportXlsx: () async {
+                                            // Export voucher as table data
+                                            final rows = [
+                                              {
+                                                'voucher_number': refNumberController.text,
+                                                'date': dateController.text,
+                                                'pay_to': payToController.text,
+                                                'bank': bankController.text,
+                                                'check_number': checkNumberController.text,
+                                                'received_sum': receivedSumController.text,
+                                                'satellite_office': satelliteOfficeController.text,
+                                                'prepared_by': preparedNameController.text,
+                                                'approved_by': approvedNameController.text,
+                                                'received_by': receivedNameController.text,
+                                              }
+                                            ];
+                                            
+                                            await ExportService.exportAndShareExcel(
+                                              context: context,
+                                              rows: rows,
+                                              filename: 'check_voucher_${refNumberController.text.isNotEmpty ? refNumberController.text : DateTime.now().millisecondsSinceEpoch}.xlsx',
+                                              sheetName: 'Check Voucher',
+                                              columnOrder: ['voucher_number', 'date', 'pay_to', 'bank', 'check_number', 'received_sum', 'satellite_office', 'prepared_by', 'approved_by', 'received_by'],
+                                              columnHeaders: {
+                                                'voucher_number': 'Voucher Number',
+                                                'date': 'Date',
+                                                'pay_to': 'Pay To',
+                                                'bank': 'Bank',
+                                                'check_number': 'Check Number',
+                                                'received_sum': 'Received Sum',
+                                                'satellite_office': 'Satellite Office',
+                                                'prepared_by': 'Prepared By',
+                                                'approved_by': 'Approved By',
+                                                'received_by': 'Received By',
+                                              },
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),

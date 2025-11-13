@@ -226,7 +226,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
 
   DataRow _buildRow(Map<String, dynamic> loan) {
     final applicant = "${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}";
-    final amount = '₱${loan['loan_amount'] ?? 0}';
+  final amount = 'Php ${loan['loan_amount'] ?? 0}';
     final type = loan['reason'] ?? 'N/A';
     final date = formatDate(loan['created_at']);
 

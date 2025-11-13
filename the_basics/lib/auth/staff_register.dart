@@ -118,6 +118,13 @@ class _StaffRegisterPageState extends State<StaffRegisterPage> {
       return;
     }
 
+    // Validate password against central policy
+    final pwErr = authService.validatePassword(password);
+    if (pwErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pwErr)));
+      return;
+    }
+
     // Validate contact number similarly to RegisterPage
     final normalizedContact = contactNo.replaceAll(RegExp(r'[\s\-()]'), '');
       if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizedContact)) {

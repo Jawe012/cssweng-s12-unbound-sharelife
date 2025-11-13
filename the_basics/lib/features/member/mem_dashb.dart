@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MemberDB extends StatefulWidget {
@@ -195,7 +197,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("₱60,000"),
+                  Text("Php 60,000"),
               ],
             ),
           ),
@@ -223,7 +225,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("₱40,000"),
+                  Text("Php 40,000"),
               ],
             ),
           ),
@@ -251,7 +253,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("₱100,000"),
+                  Text("Php 100,000"),
               ],
             ),
           ),
@@ -352,21 +354,43 @@ class _MemDBState extends State<MemberDB> {
         Spacer(),
 
         // Download button
-        SizedBox(
+        ExportDropdownButton(
           height: buttonHeight,
-          child: ElevatedButton.icon(
-            onPressed: _fetchMemberLoans,
-            icon: Icon(Icons.download, color: Colors.white),
-            label: Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: Size(100, buttonHeight),
-              padding: EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            await ExportService.exportAndSharePdf(
+              context: context,
+              title: 'Loan Dashboard',
+              rows: loans,
+              filename: 'loan_dashboard.pdf',
+              columnOrder: ['ref', 'amt', 'start', 'due', 'pay', 'stat'],
+              columnHeaders: {
+                'ref': 'Loan ID',
+                'amt': 'Amount',
+                'start': 'Start Date',
+                'due': 'Due Date',
+                'pay': 'Payment',
+                'stat': 'Status',
+              },
+            );
+          },
+          onExportXlsx: () async {
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: loans,
+              filename: 'loan_dashboard.xlsx',
+              sheetName: 'Loans',
+              columnOrder: ['ref', 'amt', 'start', 'due', 'pay', 'stat'],
+              columnHeaders: {
+                'ref': 'Loan ID',
+                'amt': 'Amount',
+                'start': 'Start Date',
+                'due': 'Due Date',
+                'pay': 'Payment',
+                'stat': 'Status',
+              },
+            );
+          },
         ),
       ],
     );
@@ -438,13 +462,13 @@ class _MemDBState extends State<MemberDB> {
                         .map(
                           (loan) => DataRow(cells: [
                             DataCell(Text(loan["ref"])),
-                            DataCell(Text("₱${loan["amt"]}")),
+                            DataCell(Text("Php ${loan["amt"]}")),
                             DataCell(Text("${loan["interest"]}%")),
                             DataCell(Text(loan["start"])),
                             DataCell(Text(loan["due"])),
                             DataCell(Text(loan["instType"])),
                             DataCell(Text("${loan["totalInst"]}")),
-                            DataCell(Text("₱${loan["instAmt"]}")),
+                            DataCell(Text("Php ${loan["instAmt"]}")),
                             DataCell(Text(loan["status"])),
                           ]),
                         )

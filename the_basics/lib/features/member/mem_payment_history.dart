@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MemberPaymentHistory extends StatefulWidget {
@@ -111,7 +113,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
         isLoading = false;
       });
 
-      debugPrint('[PaymentHistory] Loaded ${payments.length} payments. Total: ₱$totalPaid');
+  debugPrint('[PaymentHistory] Loaded ${payments.length} payments. Total: Php $totalPaid');
 
     } catch (e) {
       debugPrint('[PaymentHistory] Error fetching payment history: $e');
@@ -204,7 +206,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                 Text("Total Paid",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("₱${totalPaid.toStringAsFixed(2)}"),
+                Text("Php ${totalPaid.toStringAsFixed(2)}"),
               ],
             ),
           ),
@@ -258,7 +260,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                 Text("Pending Approval",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("₱${pendingAmount.toStringAsFixed(2)}"),
+                Text("Php ${pendingAmount.toStringAsFixed(2)}"),
               ],
             ),
           ),
@@ -369,22 +371,41 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
         Spacer(),
 
         // download button
-        SizedBox(
+        ExportDropdownButton(
           height: buttonHeight,
-          child: ElevatedButton.icon(
-            onPressed: () {
-            },
-            icon: Icon(Icons.download, color: Colors.white),
-            label: Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: Size(100, buttonHeight),
-              padding: EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            await ExportService.exportAndSharePdf(
+              context: context,
+              title: 'Payment History',
+              rows: filteredPayments,
+              filename: 'payment_history.pdf',
+              columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+              columnHeaders: {
+                'payment_id': 'Payment ID',
+                'payment_date': 'Date',
+                'amount': 'Amount',
+                'payment_type': 'Type',
+                'status': 'Status',
+              },
+            );
+          },
+          onExportXlsx: () async {
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: filteredPayments,
+              filename: 'payment_history.xlsx',
+              sheetName: 'Payment History',
+              columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+              columnHeaders: {
+                'payment_id': 'Payment ID',
+                'payment_date': 'Date',
+                'amount': 'Amount',
+                'payment_type': 'Type',
+                'status': 'Status',
+              },
+            );
+          },
         ),
       ],
     );
@@ -526,7 +547,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                             DataCell(Text(payment["payment_id"].toString())),
                             DataCell(Text(payment["approved_loan_id"].toString())),
                             DataCell(Text(payment["installment_number"]?.toString() ?? 'N/A')),
-                            DataCell(Text("₱${(payment["amount"] is num ? (payment["amount"] as num).toDouble() : double.tryParse(payment["amount"].toString()) ?? 0.0).toStringAsFixed(2)}")),
+                            DataCell(Text("Php ${(payment["amount"] is num ? (payment["amount"] as num).toDouble() : double.tryParse(payment["amount"].toString()) ?? 0.0).toStringAsFixed(2)}")),
                             DataCell(Text(payment["payment_type"] ?? 'N/A')),
                             DataCell(Text(_getReference(payment))),
                             DataCell(Text(_formatDate(payment["payment_date"]))),

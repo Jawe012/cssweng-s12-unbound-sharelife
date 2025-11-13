@@ -63,6 +63,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       return;
     }
 
+    // Validate new password using central policy
+    final pwErr = _authService.validatePassword(newPw);
+    if (pwErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pwErr)));
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await _authService.updatePassword(newPw);

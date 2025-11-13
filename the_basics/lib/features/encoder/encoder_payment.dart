@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -128,23 +130,87 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
     return Row(
       children: [
         Spacer(),
-        SizedBox(
+        ExportDropdownButton(
           height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download,
-                color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            final rows = [{
+              'field': 'Member Name',
+              'value': memberNameController.text,
+            }, {
+              'field': 'Member ID',
+              'value': memberIdController.text,
+            }, {
+              'field': 'Amount Paid',
+              'value': amountPaidController.text,
+            }, {
+              'field': 'Payment Date',
+              'value': paymentDateController.text,
+            }, {
+              'field': 'Payment Method',
+              'value': selectedPaymentMethod ?? 'N/A',
+            }, {
+              'field': 'Staff/Encoder',
+              'value': staffController.text,
+            }, {
+              'field': 'Reference Number',
+              'value': refNoController.text,
+            }, {
+              'field': 'Receipt Number',
+              'value': receiptController.text,
+            }, {
+              'field': 'Bank Name',
+              'value': bankNameController.text,
+            }];
+            
+            await ExportService.exportAndSharePdf(
+              context: context,
+              rows: rows,
+              title: 'Payment Form',
+              filename: 'payment_form_${DateTime.now().millisecondsSinceEpoch}.pdf',
+              columnOrder: ['field', 'value'],
+              columnHeaders: {'field': 'Field', 'value': 'Value'},
+            );
+          },
+          onExportXlsx: () async {
+            final rows = [{
+              'field': 'Member Name',
+              'value': memberNameController.text,
+            }, {
+              'field': 'Member ID',
+              'value': memberIdController.text,
+            }, {
+              'field': 'Amount Paid',
+              'value': amountPaidController.text,
+            }, {
+              'field': 'Payment Date',
+              'value': paymentDateController.text,
+            }, {
+              'field': 'Payment Method',
+              'value': selectedPaymentMethod ?? 'N/A',
+            }, {
+              'field': 'Staff/Encoder',
+              'value': staffController.text,
+            }, {
+              'field': 'Reference Number',
+              'value': refNoController.text,
+            }, {
+              'field': 'Receipt Number',
+              'value': receiptController.text,
+            }, {
+              'field': 'Bank Name',
+              'value': bankNameController.text,
+            }];
+            
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: rows,
+              filename: 'payment_form_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+              sheetName: 'Payment Form',
+              columnOrder: ['field', 'value'],
+              columnHeaders: {'field': 'Field', 'value': 'Value'},
+            );
+          },
         ),
       ]
     );
@@ -196,7 +262,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -221,7 +287,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -269,7 +335,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -593,7 +659,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         _showError("Please enter a valid amount");
         return;
       }
-      debugPrint('[EncoderPayment] Payment amount: ₱$amount');
+  debugPrint('[EncoderPayment] Payment amount: Php $amount');
 
       // Method-specific validation
       if (selectedPaymentMethod == 'Cash') {

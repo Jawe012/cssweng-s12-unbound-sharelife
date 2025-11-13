@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EncoderLoanPayRec extends StatefulWidget {
@@ -318,21 +320,51 @@ class _MemDBState extends State<EncoderLoanPayRec> {
           Spacer(),
 
           // Download button
-          SizedBox(
+          ExportDropdownButton(
             height: buttonHeight,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.download, color: Colors.white),
-              label: Text(
-                "Download",
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: Size(100, buttonHeight),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
+            minWidth: 100,
+            onExportPdf: () async {
+              await ExportService.exportAndSharePdf(
+                context: context,
+                rows: loans,
+                title: 'Loan Records',
+                filename: 'loan_records_${DateTime.now().millisecondsSinceEpoch}.pdf',
+                columnOrder: ['ref', 'memName', 'amt', 'interest', 'start', 'due', 'instType', 'totalInst', 'instAmt', 'status'],
+                columnHeaders: {
+                  'ref': 'Loan ID',
+                  'memName': 'Member Name',
+                  'amt': 'Amount',
+                  'interest': 'Interest',
+                  'start': 'Start Date',
+                  'due': 'Due Date',
+                  'instType': 'Installment Type',
+                  'totalInst': 'Total Installments',
+                  'instAmt': 'Installment Amount',
+                  'status': 'Status',
+                },
+              );
+            },
+            onExportXlsx: () async {
+              await ExportService.exportAndShareExcel(
+                context: context,
+                rows: loans,
+                filename: 'loan_records_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+                sheetName: 'Loan Records',
+                columnOrder: ['ref', 'memName', 'amt', 'interest', 'start', 'due', 'instType', 'totalInst', 'instAmt', 'status'],
+                columnHeaders: {
+                  'ref': 'Loan ID',
+                  'memName': 'Member Name',
+                  'amt': 'Amount',
+                  'interest': 'Interest',
+                  'start': 'Start Date',
+                  'due': 'Due Date',
+                  'instType': 'Installment Type',
+                  'totalInst': 'Total Installments',
+                  'instAmt': 'Installment Amount',
+                  'status': 'Status',
+                },
+              );
+            },
           ),
         ],
       ),
@@ -384,13 +416,13 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                       return DataRow(cells: [
                         DataCell(Text(loan["ref"])),
                         DataCell(Text(loan["memName"])),
-                        DataCell(Text("₱${loan["amt"]}")),
+                        DataCell(Text("Php ${loan["amt"]}")),
                         DataCell(Text("${loan["interest"]}%")),
                         DataCell(Text(loan["start"])),
                         DataCell(Text(loan["due"])),
                         DataCell(Text(loan["instType"])),
                         DataCell(Text("${loan["totalInst"]}")),
-                        DataCell(Text("₱${loan["instAmt"]}")),
+                        DataCell(Text("Php ${loan["instAmt"]}")),
                         DataCell(Text(loan["status"])),
                       ]);
                     }).toList(),
@@ -522,22 +554,41 @@ class _MemDBState extends State<EncoderLoanPayRec> {
           Spacer(),
 
           // download button
-          SizedBox(
+          ExportDropdownButton(
             height: buttonHeight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-              },
-              icon: Icon(Icons.download, color: Colors.white),
-              label: Text(
-                "Download",
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: Size(100, buttonHeight),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
+            minWidth: 100,
+            onExportPdf: () async {
+              await ExportService.exportAndSharePdf(
+                context: context,
+                rows: filteredPayments,
+                title: 'Payment Records',
+                filename: 'payment_records_${DateTime.now().millisecondsSinceEpoch}.pdf',
+                columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+                columnHeaders: {
+                  'payment_id': 'Payment ID',
+                  'payment_date': 'Payment Date',
+                  'amount': 'Amount',
+                  'payment_type': 'Payment Type',
+                  'status': 'Status',
+                },
+              );
+            },
+            onExportXlsx: () async {
+              await ExportService.exportAndShareExcel(
+                context: context,
+                rows: filteredPayments,
+                filename: 'payment_records_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+                sheetName: 'Payment Records',
+                columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+                columnHeaders: {
+                  'payment_id': 'Payment ID',
+                  'payment_date': 'Payment Date',
+                  'amount': 'Amount',
+                  'payment_type': 'Payment Type',
+                  'status': 'Status',
+                },
+              );
+            },
           ),
         ],
       ),
@@ -589,7 +640,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                         DataCell(Text("${pay["payment_id"] ?? ""}")),
                         DataCell(Text("${pay["approved_loan_id"] ?? ""}")),
                         DataCell(Text("${pay["installment_number"] ?? ""}")),
-                        DataCell(Text("₱${pay["amount"] ?? 0}")),
+                        DataCell(Text("Php ${pay["amount"] ?? 0}")),
                         DataCell(Text("${pay["payment_type"] ?? ""}")),
                         DataCell(Text("${pay["gcash_reference"] ?? ""}")),
                         DataCell(Text("${pay["bank_name"] ?? ""}")),

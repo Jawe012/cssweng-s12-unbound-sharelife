@@ -163,46 +163,59 @@ class AuthService {
     try {
       // Check if user already exists
       final exists = await checkUserExists(email, username: username);
-
-      RegExp passComplexity = RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+\$');
-      
       if (exists) {
     debugPrint('[staffSignUp] User already exists with that email/username: $email / $username');
         return Future.error('User already exists with that email/username');
-      } else if (password.length < 6) {
-  debugPrint('[staffSignUp] Password too short');
-        return Future.error('Password must be at least 6 characters long');
-      } else if (!passComplexity.hasMatch(password)) {
-  debugPrint ('[staffSignUp] Password does not meet complexity requirements');
-        return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
-      } else {
-        
-        // Save staff profile data locally before signup (include role)
-  debugPrint('[staffSignUp] Saving pending staff profile for: $email');
-        await ProfileStorage.savePendingProfile({
-          'email': email.trim().toLowerCase(),
-          'username': username.trim(),
-          'first_name': firstName.trim(),
-          'last_name': lastName.trim(),
-          'date_of_birth': dateOfBirth.trim(),
-          'contact_no': contactNo.trim(),
-          'role': 'member', // mark as member so claim logic knows where to insert
-        });
+      }
 
-        // Only do the auth signup - no members table insert yet
-  debugPrint('[staffSignUp] Calling Supabase signUp for: $email');
-        final response = await _supabase.auth.signUp(
-          email: email,
-          password: password,
-        );
+      // Validate password using central helper
+      final pwErr = validatePassword(password);
+      if (pwErr != null) {
+        debugPrint('[signUp] Password validation failed: $pwErr');
+        return Future.error(pwErr);
+      }
+      
+      // Password validated; proceed to save pending profile and sign up
+      debugPrint('[signUp] Saving pending profile for: $email');
+      await ProfileStorage.savePendingProfile({
+        'email': email.trim().toLowerCase(),
+        'username': username.trim(),
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+        'date_of_birth': dateOfBirth.trim(),
+        'contact_no': contactNo.trim(),
+        'role': 'member', // mark as member so claim logic knows where to insert
+      });
 
-  debugPrint('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
-        return response;
-      } 
+      // Perform auth signup
+      debugPrint('[signUp] Calling Supabase signUp for: $email');
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+      debugPrint('[signUp] Supabase signUp response: ${response.user?.id}, response: $response');
+      return response;
     } catch (e) {
       debugPrint('[staffSignUp] Error checking existing user: $e');
       return Future.error('Error checking existing user: $e');
     }
+  }
+
+  /// Validate a password against the project's policy.
+  /// Returns null if the password is valid, otherwise returns a human-friendly error
+  /// message suitable for showing to users.
+  String? validatePassword(String password) {
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+
+    // Require at least one lowercase, one uppercase, one digit and one special character
+    final passComplexity = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+$');
+    if (!passComplexity.hasMatch(password)) {
+      return 'Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)';
+    }
+
+    return null;
   }
 
   // Reset user password
@@ -254,18 +267,18 @@ class AuthService {
       // Check if user already exists
       final exists = await checkUserExists(email, username: username);
 
-      RegExp passComplexity = RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*.,?]).+\$');
-      
       if (exists) {
         print('[staffSignUp] User already exists with that email/username: $email / $username');
         return Future.error('User already exists with that email/username');
-      } else if (password.length < 6) {
-        print('[staffSignUp] Password too short');
-        return Future.error('Password must be at least 6 characters long');
-      } else if (!passComplexity.hasMatch(password)) {
-        print ('[staffSignUp] Password does not meet complexity requirements');
-        return Future.error('Password must have an uppercase letter, a lowercase letter, a number, and a special character (e.g. !@#\$%^&*.,?)');
-      } else {
+      }
+
+      final pwErr = validatePassword(password);
+      if (pwErr != null) {
+        print('[staffSignUp] Password validation failed: $pwErr');
+        return Future.error(pwErr);
+      }
+
+      // Save staff profile data locally before signup (include role)
         // Save staff profile data locally before signup (include role)
         print('[staffSignUp] Saving pending staff profile for: $email, role: $role');
         await ProfileStorage.savePendingProfile({
@@ -287,7 +300,6 @@ class AuthService {
 
         print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
         return response;
-      }
 
     } catch (e) {
       print('[staffSignUp] Error checking existing user: $e');

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -376,23 +378,149 @@ class _AdminReportsState extends State<AdminReports> {
 
         Spacer(),
         
-        SizedBox(
+        ExportDropdownButton(
           height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download,
-                color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            List<Map<String, dynamic>> reportData = [];
+            String reportTitle = '';
+            List<String> columnOrder = [];
+            Map<String, String> columnHeaders = {};
+            
+            // Determine which report is currently selected
+            if (selectedReportType == 'Active Loans') {
+              reportData = _activeLoansData;
+              reportTitle = 'Active Loans Report';
+              columnOrder = ['loanID', 'memName', 'loanType', 'startDate', 'dueDate', 'principalAmt', 'remainBal'];
+              columnHeaders = {
+                'loanID': 'Loan ID',
+                'memName': 'Member Name',
+                'loanType': 'Loan Type',
+                'startDate': 'Start Date',
+                'dueDate': 'Due Date',
+                'principalAmt': 'Principal Amount',
+                'remainBal': 'Remaining Balance',
+              };
+            } else if (selectedReportType == 'Overdue Loans') {
+              reportData = _overdueLoansData;
+              reportTitle = 'Overdue Loans Report';
+              columnOrder = ['loanID', 'memName', 'contactNo', 'daysOverdue', 'amountDue', 'lateFees'];
+              columnHeaders = {
+                'loanID': 'Loan ID',
+                'memName': 'Member Name',
+                'contactNo': 'Contact Number',
+                'daysOverdue': 'Days Overdue',
+                'amountDue': 'Amount Due',
+                'lateFees': 'Late Fees',
+              };
+            } else if (selectedReportType == 'Member Loan Summary') {
+              reportData = _memberLoansData;
+              reportTitle = 'Member Loan Summary';
+              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'outBal', 'loanStatus'];
+              columnHeaders = {
+                'memName': 'Member Name',
+                'memID': 'Member ID',
+                'totalLoans': 'Total Loans',
+                'totalBorrowed': 'Total Borrowed',
+                'totalPaid': 'Total Paid',
+                'outBal': 'Outstanding Balance',
+                'loanStatus': 'Status',
+              };
+            } else if (selectedReportType == 'Payment Collection') {
+              reportData = _paymentCollectionData;
+              reportTitle = 'Payment Collections Report';
+              columnOrder = ['payDate', 'memName', 'amountPaid', 'payMethod', 'loanID'];
+              columnHeaders = {
+                'payDate': 'Payment Date',
+                'memName': 'Member Name',
+                'amountPaid': 'Amount Paid',
+                'payMethod': 'Payment Method',
+                'loanID': 'Loan ID',
+              };
+            } else {
+              ExportService.showExportMessage(context, 'Please select a report type first');
+              return;
+            }
+            
+            await ExportService.exportAndSharePdf(
+              context: context,
+              rows: reportData,
+              title: reportTitle,
+              filename: '${reportTitle.toLowerCase().replaceAll(' ', '_')}.pdf',
+              columnOrder: columnOrder,
+              columnHeaders: columnHeaders,
+            );
+          },
+          onExportXlsx: () async {
+            List<Map<String, dynamic>> reportData = [];
+            String reportTitle = '';
+            List<String> columnOrder = [];
+            Map<String, String> columnHeaders = {};
+            
+            // Determine which report is currently selected
+            if (selectedReportType == 'Active Loans') {
+              reportData = _activeLoansData;
+              reportTitle = 'Active Loans Report';
+              columnOrder = ['loanID', 'memName', 'loanType', 'startDate', 'dueDate', 'principalAmt', 'remainBal'];
+              columnHeaders = {
+                'loanID': 'Loan ID',
+                'memName': 'Member Name',
+                'loanType': 'Loan Type',
+                'startDate': 'Start Date',
+                'dueDate': 'Due Date',
+                'principalAmt': 'Principal Amount',
+                'remainBal': 'Remaining Balance',
+              };
+            } else if (selectedReportType == 'Overdue Loans') {
+              reportData = _overdueLoansData;
+              reportTitle = 'Overdue Loans Report';
+              columnOrder = ['loanID', 'memName', 'contactNo', 'daysOverdue', 'amountDue', 'lateFees'];
+              columnHeaders = {
+                'loanID': 'Loan ID',
+                'memName': 'Member Name',
+                'contactNo': 'Contact Number',
+                'daysOverdue': 'Days Overdue',
+                'amountDue': 'Amount Due',
+                'lateFees': 'Late Fees',
+              };
+            } else if (selectedReportType == 'Member Loan Summary') {
+              reportData = _memberLoansData;
+              reportTitle = 'Member Loan Summary';
+              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'outBal', 'loanStatus'];
+              columnHeaders = {
+                'memName': 'Member Name',
+                'memID': 'Member ID',
+                'totalLoans': 'Total Loans',
+                'totalBorrowed': 'Total Borrowed',
+                'totalPaid': 'Total Paid',
+                'outBal': 'Outstanding Balance',
+                'loanStatus': 'Status',
+              };
+            } else if (selectedReportType == 'Payment Collection') {
+              reportData = _paymentCollectionData;
+              reportTitle = 'Payment Collections Report';
+              columnOrder = ['payDate', 'memName', 'amountPaid', 'payMethod', 'loanID'];
+              columnHeaders = {
+                'payDate': 'Payment Date',
+                'memName': 'Member Name',
+                'amountPaid': 'Amount Paid',
+                'payMethod': 'Payment Method',
+                'loanID': 'Loan ID',
+              };
+            } else {
+              ExportService.showExportMessage(context, 'Please select a report type first');
+              return;
+            }
+            
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: reportData,
+              filename: '${reportTitle.toLowerCase().replaceAll(' ', '_')}.xlsx',
+              sheetName: reportTitle,
+              columnOrder: columnOrder,
+              columnHeaders: columnHeaders,
+            );
+          },
         ),
       ],
     );
@@ -465,8 +593,8 @@ class _AdminReportsState extends State<AdminReports> {
                     DataCell(Text("${loan["loanType"] ?? "-"}")),
                     DataCell(Text("${loan["startDate"] ?? "-"}")),
                     DataCell(Text("${loan["dueDate"] ?? "-"}")),
-                    DataCell(Text("₱${loan["principalAmt"] ?? "0"}")),
-                    DataCell(Text("₱${loan["remainBal"] ?? "0"}")),
+                    DataCell(Text("Php ${loan["principalAmt"] ?? "0"}")),
+                    DataCell(Text("Php ${loan["remainBal"] ?? "0"}")),
                     ]);
                   }).toList(),
                 ),
@@ -517,8 +645,8 @@ class _AdminReportsState extends State<AdminReports> {
                       DataCell(Text("${loan["loanType"] ?? "-"}")),
                       DataCell(Text("${loan["dueDate"] ?? "-"}")),
                       DataCell(Text("${loan["daysOverdue"] ?? "0"}")),
-                      DataCell(Text("₱${loan["amountDue"] ?? "0"}")),
-                      DataCell(Text("₱${loan["lateFees"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["amountDue"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["lateFees"] ?? "0"}")),
                       DataCell(Text("${loan["contactNo"] ?? "-"}")),
                     ]);
                   }).toList(),
@@ -568,9 +696,9 @@ class _AdminReportsState extends State<AdminReports> {
                       DataCell(Text("${loan["memName"] ?? "-"}")),
                       DataCell(Text("${loan["memID"] ?? "-"}")),
                       DataCell(Text("${loan["totalLoans"] ?? "0"}")),
-                      DataCell(Text("₱${loan["totalBorrowed"] ?? "0"}")),
-                      DataCell(Text("₱${loan["totalPaid"] ?? "0"}")),
-                      DataCell(Text("₱${loan["outBal"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["totalBorrowed"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["totalPaid"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["outBal"] ?? "0"}")),
                       DataCell(Text("${loan["lastPaid"] ?? "-"}")),
                       DataCell(Text("${loan["loanStatus"] ?? "-"}")),
                     ]);
@@ -624,7 +752,7 @@ class _AdminReportsState extends State<AdminReports> {
                       DataCell(Text("${loan["loanID"] ?? "-"}")),
                       DataCell(Text("${loan["payDate"] ?? "-"}")),
                       DataCell(Text("${loan["payMethod"] ?? "-"}")),
-                      DataCell(Text("₱${loan["amountPaid"] ?? "0"}")),
+                      DataCell(Text("Php ${loan["amountPaid"] ?? "0"}")),
                       DataCell(Text("${loan["collectedBy"] ?? "-"}")),
                     ]);
                   }).toList(),
@@ -658,12 +786,12 @@ class _AdminReportsState extends State<AdminReports> {
           ),
           const SizedBox(height: 24),
           _summaryRow('Total Loans Approved', data['totalLoansApproved'] ?? '0'),
-          _summaryRow('Total Disbursed Amount', '₱${data['totalDisbursed'] ?? '0'}'),
-          _summaryRow('Total Payments Received', '₱${data['totalPaymentsReceived'] ?? '0'}'),
-          _summaryRow('Total Amount Paid', '₱${data['totalAmountPaid'] ?? '0'}'),
-          _summaryRow('Outstanding Balances', '₱${data['totalOutstanding'] ?? '0'}'),
-          _summaryRow('Total Overdue Amounts', '₱${data['totalOverdue'] ?? '0'}'),
-          _summaryRow('Total Interest Earned', '₱${data['totalInterestEarned'] ?? '0'}'),
+          _summaryRow('Total Disbursed Amount', 'Php ${data['totalDisbursed'] ?? '0'}'),
+          _summaryRow('Total Payments Received', 'Php ${data['totalPaymentsReceived'] ?? '0'}'),
+          _summaryRow('Total Amount Paid', 'Php ${data['totalAmountPaid'] ?? '0'}'),
+          _summaryRow('Outstanding Balances', 'Php ${data['totalOutstanding'] ?? '0'}'),
+          _summaryRow('Total Overdue Amounts', 'Php ${data['totalOverdue'] ?? '0'}'),
+          _summaryRow('Total Interest Earned', 'Php ${data['totalInterestEarned'] ?? '0'}'),
         ],
       ),
     );

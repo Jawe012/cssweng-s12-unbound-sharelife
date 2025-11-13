@@ -280,7 +280,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                 SizedBox(height: textSpacing),
                 Text(memberName, style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
-                Text('₱${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: contentFont)),
+                Text('Php ${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$installmentNumber', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
