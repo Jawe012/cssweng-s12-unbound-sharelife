@@ -75,15 +75,41 @@ class _StaffRegisterPageState extends State<StaffRegisterPage> {
     }
 
     // Convert DOB to ISO if possible (reuse logic from register.dart)
+    // Validate Date of Birth (MM/DD/YYYY) and convert to ISO; ensure not future and age >= 18
     String dobIso = '';
     if (dateOfBirth.isNotEmpty) {
       try {
         final parts = dateOfBirth.split('/');
         if (parts.length == 3) {
-          final dt = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
-          dobIso = dt.toIso8601String().split('T')[0];
+          final month = int.parse(parts[0]);
+          final day = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          final dt = DateTime(year, month, day);
+          final now = DateTime.now();
+          if (dt.year == year && dt.month == month && dt.day == day) {
+            if (dt.isAfter(now)) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date of birth can't be in the future.")));
+              return;
+            }
+            int age = now.year - dt.year;
+            if (now.month < dt.month || (now.month == dt.month && now.day < dt.day)) age -= 1;
+            if (age < 18) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Staff must be at least 18 years old.')));
+              return;
+            }
+            dobIso = dt.toIso8601String().split('T')[0];
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+            return;
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+          return;
         }
-      } catch (_) {}
+      } catch (_) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+        return;
+      }
     }
 
     if (password != confirmPassword) {
@@ -91,6 +117,17 @@ class _StaffRegisterPageState extends State<StaffRegisterPage> {
         .showSnackBar(const SnackBar(content: Text("Passwords don't match")));
       return;
     }
+
+    // Validate contact number similarly to RegisterPage
+    final normalizedContact = contactNo.replaceAll(RegExp(r'[\s\-()]'), '');
+      if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizedContact)) {
+        // defensive: fallthrough
+      }
+      // Validate contact number: allow optional leading '+' and 7-15 digits
+      if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizedContact)) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid contact number (7-15 digits, optional leading +).')));
+        return;
+      }
 
     // Check if user exists
     try {
