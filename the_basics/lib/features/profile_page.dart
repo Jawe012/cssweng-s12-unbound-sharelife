@@ -94,7 +94,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         SizedBox(height: contentgap),
         Text(
-          "Date of Birth: $dob",
+          "Date of Birth: ${(() {
+            if (dob.isEmpty) return 'N/A';
+            final dt = DateTime.tryParse(dob);
+            if (dt != null) {
+              final y = dt.year.toString().padLeft(4, '0');
+              final m = dt.month.toString().padLeft(2, '0');
+              final d = dt.day.toString().padLeft(2, '0');
+              return '$y-$m-$d';
+            }
+            return dob;
+          })()}",
           style: TextStyle(fontSize: contentsize, color: Colors.black)
         ),
         SizedBox(height: contentgap),
@@ -163,42 +173,134 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
+      final userId = user.id;
       _email = user.email ?? '';
 
-      // Try staff first
-      final staffResp = await supabase.from('staff').select('first_name,last_name,role,username,contact_no,email_address,date_of_birth').eq('email_address', _email).maybeSingle();
+      debugPrint('🔍 Loading profile for user_id: $userId, email: $_email');
+
+      Map<String, dynamic>? asMap(dynamic raw) {
+        if (raw == null) return null;
+        if (raw is Map<String, dynamic>) return raw;
+        if (raw is Map) return Map<String, dynamic>.from(raw);
+        return null;
+      }
+
+      // helper to try multiple possible column names (returns first non-empty value)
+      String pick(Map<String, dynamic>? m, List<String> keys) {
+        if (m == null) return '';
+        for (final k in keys) {
+          if (m.containsKey(k) && m[k] != null) return m[k].toString();
+        }
+        return '';
+      }
+
+      // Try staff first by user_id, then by email if not found
+      dynamic staffRaw;
+      try {
+        staffRaw = await supabase.from('staff').select('*').eq('user_id', userId).maybeSingle();
+      } catch (e) {
+        debugPrint('Staff by user_id query failed: $e');
+      }
+      debugPrint('staffRaw (after user_id query): $staffRaw');
+      var staffResp = asMap(staffRaw);
+      if (staffResp == null && _email.isNotEmpty) {
+        try {
+          staffRaw = await supabase.from('staff').select('*').eq('email_address', _email).maybeSingle();
+          staffResp = asMap(staffRaw);
+        } catch (e) {
+          debugPrint('Staff by email query failed: $e');
+        }
+      }
+      debugPrint('staffRaw (final): $staffRaw');
+
       if (staffResp != null) {
         setState(() {
-          _firstName = (staffResp['first_name'] ?? '') as String;
-          _lastName = (staffResp['last_name'] ?? '') as String;
-          _role = (staffResp['role'] ?? '') as String;
-          _username = (staffResp['username'] ?? '') as String;
-          _contactnum = (staffResp['contact_no'] ?? '') as String;
-          _dob = (staffResp['date_of_birth'] ?? '') as String;
+          _firstName = pick(staffResp, ['first_name', 'firstname', 'given_name']);
+          _lastName = pick(staffResp, ['last_name', 'lastname', 'family_name']);
+          _role = pick(staffResp, ['role']) == '' ? 'Staff' : pick(staffResp, ['role']);
+          _username = pick(staffResp, ['username', 'user_name', 'user']);
+          _contactnum = pick(staffResp, ['contact_number', 'contact_no', 'contact']);
+          _dob = pick(staffResp, ['date_of_birth', 'dob']);
+          _recogDate = 'N/A';
+          _status = 'N/A';
+          _loanStatus = 'N/A';
         });
+        debugPrint('✅ Loaded staff profile: $_firstName $_lastName');
       } else {
-        // Try members table
-        final memResp = await supabase.from('members').select('first_name,last_name,role,username,contact_no,email_address,date_of_birth,recognition_date,status,loan_status').eq('email_address', _email).maybeSingle();
+        // Try members table by user_id then email
+        dynamic memRaw;
+        try {
+          memRaw = await supabase.from('members').select('*').eq('user_id', userId).maybeSingle();
+        } catch (e) {
+          debugPrint('Members by user_id query failed: $e');
+        }
+        debugPrint('membersRaw (after user_id query): $memRaw');
+        var memResp = asMap(memRaw);
+        if (memResp == null && _email.isNotEmpty) {
+          try {
+            memRaw = await supabase.from('members').select('*').eq('email_address', _email).maybeSingle();
+            memResp = asMap(memRaw);
+          } catch (e) {
+            debugPrint('Members by email query failed: $e');
+          }
+        }
+        debugPrint('membersRaw (final): $memRaw');
+
         if (memResp != null) {
           setState(() {
-            _firstName = (memResp['first_name'] ?? '') as String;
-            _lastName = (memResp['last_name'] ?? '') as String;
-            _role = (memResp['role'] ?? '') as String;
-            _username = (memResp['username'] ?? '') as String;
-            _contactnum = (memResp['contact_no'] ?? '') as String;
-            _dob = (memResp['date_of_birth'] ?? '') as String;
-            _recogDate = (memResp['recognition_date'] ?? '') as String;
-            _status = (memResp['status'] ?? '') as String;
-            _loanStatus = (memResp['loan_status'] ?? '') as String;
+            _firstName = pick(memResp, ['first_name', 'firstname', 'given_name']);
+            _lastName = pick(memResp, ['last_name', 'lastname', 'family_name']);
+            final r = pick(memResp, ['role']);
+            _role = r == '' ? 'Member' : r;
+            _username = pick(memResp, ['username', 'user_name', 'user']);
+            _contactnum = pick(memResp, ['contact_number', 'contact_no', 'contact']);
+            _dob = pick(memResp, ['date_of_birth', 'dob']);
+            _recogDate = pick(memResp, ['recognition_date', 'recognitionDate']);
+            _status = pick(memResp, ['status']) == '' ? 'active' : pick(memResp, ['status']);
           });
+          debugPrint('✅ Loaded member profile: $_firstName $_lastName');
+
+          // Determine member id column (supporting 'member_id' or 'id')
+          dynamic memberIdRaw = memResp['member_id'] ?? memResp['id'] ?? memResp['memberid'] ?? memResp['member_id_int'] ?? memResp['member_id_str'];
+          if (memberIdRaw == null) {
+            debugPrint('Member id not found on member record; skipping loan status fetch. memResp keys: ${memResp.keys.toList()}');
+            setState(() => _loanStatus = 'No loan applications');
+          } else {
+            // use memberIdRaw as-is (supabase can match strings or ints depending on column type)
+            try {
+              debugPrint('Fetching loan status for member_id = $memberIdRaw');
+              final loanResp = await supabase
+                  .from('loan_application')
+                  .select('status')
+                  .eq('member_id', memberIdRaw)
+                  .order('created_at', ascending: false)
+                  .limit(1)
+                  .maybeSingle();
+
+              debugPrint('loanResp: $loanResp');
+              final loanMap = asMap(loanResp);
+              if (loanMap != null && loanMap['status'] != null) {
+                setState(() => _loanStatus = loanMap['status'].toString());
+              } else {
+                setState(() => _loanStatus = 'No loan applications');
+              }
+            } catch (e) {
+              debugPrint('Error fetching loan status: $e');
+              setState(() => _loanStatus = 'No loan applications');
+            }
+          }
+        } else {
+          debugPrint('❌ No data found in staff or members tables for user_id/email');
+          debugPrint('💡 Check if user_id or email exists in your database tables');
         }
       }
     } catch (e) {
-      debugPrint('Error loading profile: $e');
+      debugPrint('❌ Error loading profile: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
