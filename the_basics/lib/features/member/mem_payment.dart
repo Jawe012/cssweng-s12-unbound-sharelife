@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -43,23 +45,46 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
     return Row(
       children: [
         Spacer(),
-        SizedBox(
+        ExportDropdownButton(
           height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download,
-                color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            // Export payment form data
+            final paymentData = [{
+              'Field': 'Amount',
+              'Value': amountPaidController.text,
+            }, {
+              'Field': 'Payment Date',
+              'Value': paymentDateController.text,
+            }, {
+              'Field': 'Payment Type',
+              'Value': selectedPaymentMethod ?? 'N/A',
+            }];
+            await ExportService.exportAndSharePdf(
+              context: context,
+              title: 'Payment Information',
+              rows: paymentData,
+              filename: 'payment_info.pdf',
+            );
+          },
+          onExportXlsx: () async {
+            final paymentData = [{
+              'Field': 'Amount',
+              'Value': amountPaidController.text,
+            }, {
+              'Field': 'Payment Date',
+              'Value': paymentDateController.text,
+            }, {
+              'Field': 'Payment Type',
+              'Value': selectedPaymentMethod ?? 'N/A',
+            }];
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: paymentData,
+              filename: 'payment_info.xlsx',
+              sheetName: 'Payment',
+            );
+          },
         ),
       ]
     );
@@ -115,7 +140,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -149,7 +174,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -197,7 +222,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "₱0"
+                  hint: "Php 0"
                 ),
               ),              
               SizedBox(width: 16),
@@ -571,7 +596,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
         _showError("Please enter a valid amount");
         return;
       }
-      debugPrint('[MemberPayment] Payment amount: ₱$amount');
+  debugPrint('[MemberPayment] Payment amount: Php $amount');
 
       // Method-specific validation
       if (selectedPaymentMethod == 'Cash') {

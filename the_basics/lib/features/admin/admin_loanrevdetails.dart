@@ -331,9 +331,9 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('₱$loanAmt', style: TextStyle(fontSize: contentFont)),
+                Text('Php $loanAmt', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
-                Text('₱$annualInc', style: TextStyle(fontSize: contentFont)),
+                Text('Php $annualInc', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$installments', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
-import 'package:the_basics/data/loan_data.dart';
-import 'package:the_basics/data/pay_data.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EncoderLoanPayRec extends StatefulWidget {
   const EncoderLoanPayRec({super.key});
@@ -14,13 +15,155 @@ class EncoderLoanPayRec extends StatefulWidget {
 class _MemDBState extends State<EncoderLoanPayRec> {
   int? sortColumnIndex;
   bool isAscending = true;
+  bool _isLoading = false;
 
-  // placeholder data
-  List<Map<String, dynamic>> loans = loansData;
-  List<Map<String, dynamic>> filteredPayments = payData;
-    List<Map<String, dynamic>> payments = payData;
+  // Real data from Supabase
+  List<Map<String, dynamic>> loans = [];
+  List<Map<String, dynamic>> filteredPayments = [];
+  List<Map<String, dynamic>> payments = [];
 
   double buttonHeight = 28;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    await Future.wait([
+      _fetchLoans(),
+      _fetchPayments(),
+    ]);
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _fetchLoans() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('approved_loans')
+          .select('*')
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedLoans = [];
+      
+      for (var loan in response) {
+        final memberId = loan['member_id'];
+        String memberName = 'Unknown Member';
+        
+        if (memberId != null) {
+          final memberResponse = await Supabase.instance.client
+              .from('members')
+              .select('first_name, last_name')
+              .eq('member_id', memberId)
+              .maybeSingle();
+          
+          if (memberResponse != null) {
+            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
+          }
+        }
+
+        final createdAt = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final year = createdAt.year;
+        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+
+        final startDate = loan['created_at'] != null 
+            ? DateTime.parse(loan['created_at']) 
+            : DateTime.now();
+        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+
+        fetchedLoans.add({
+          'ref': loanId,
+          'memName': memberName,
+          'amt': loan['loan_amount'] ?? 0,
+          'interest': loan['interest_rate'] ?? 0,
+          'start': startDate.toString().split(' ')[0],
+          'due': dueDate.toString().split(' ')[0],
+          'instType': loan['repayment_term'] != null ? '${loan['repayment_term']} months' : 'N/A',
+          'totalInst': loan['repayment_term'] ?? 0,
+          'instAmt': loan['repayment_term'] != null && loan['repayment_term'] > 0
+              ? ((loan['loan_amount'] ?? 0) / loan['repayment_term']).toStringAsFixed(2)
+              : '0.00',
+          'status': loan['status'] ?? 'unknown',
+        });
+      }
+
+      setState(() {
+        loans = fetchedLoans;
+      });
+    } catch (e) {
+      print('Error fetching loans: $e');
+      setState(() {
+        loans = [];
+      });
+    }
+  }
+
+  Future<void> _fetchPayments() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('payments')
+          .select('*')
+          .order('payment_date', ascending: false);
+
+      final List<Map<String, dynamic>> fetchedPayments = [];
+      
+      for (var payment in response) {
+        final loanId = payment['loan_id'];
+        String loanRef = 'Unknown';
+        
+        if (loanId != null) {
+          final loanResponse = await Supabase.instance.client
+              .from('approved_loans')
+              .select('application_id, created_at')
+              .eq('loan_id', loanId)
+              .maybeSingle();
+          
+          if (loanResponse != null) {
+            final createdAt = loanResponse['created_at'] != null 
+                ? DateTime.parse(loanResponse['created_at']) 
+                : DateTime.now();
+            final year = createdAt.year;
+            loanRef = 'LN-$year-${loanResponse['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+          }
+        }
+
+        fetchedPayments.add({
+          'paymentId': payment['payment_id']?.toString() ?? 'N/A',
+          'loanRef': loanRef,
+          'amount': payment['amount'] ?? 0,
+          'paymentDate': payment['payment_date'] ?? 'N/A',
+          'method': payment['payment_method'] ?? 'N/A',
+          'status': payment['status'] ?? 'pending',
+        });
+      }
+
+      setState(() {
+        payments = fetchedPayments;
+        filteredPayments = fetchedPayments;
+      });
+    } catch (e) {
+      print('Error fetching payments: $e');
+      setState(() {
+        payments = [];
+        filteredPayments = [];
+      });
+    }
+  }
+
+  DateTime _calculateDueDate(DateTime startDate, int? repaymentTerm) {
+    if (repaymentTerm == null || repaymentTerm == 0) {
+      return startDate.add(Duration(days: 30));
+    }
+    return DateTime(
+      startDate.year,
+      startDate.month + repaymentTerm,
+      startDate.day,
+    );
+  }
 
   void onSort<T>(
     int columnIndex,
@@ -82,12 +225,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8),
               ),
               onChanged: (value) {
-                setState(() {
-                  loans = loansData
-                      .where((loan) =>
-                          loan["ref"].toLowerCase().contains(value.toLowerCase()))
-                      .toList();
-                });
+                // Filter logic can be implemented here
               },
             ),
           ),
@@ -106,12 +244,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 8),
               ),
               onChanged: (value) {
-                setState(() {
-                  loans = loansData
-                      .where((loan) =>
-                          loan["memName"].toLowerCase().contains(value.toLowerCase()))
-                      .toList();
-                });
+                // Filter logic can be implemented here
               },
             ),
           ),
@@ -187,21 +320,51 @@ class _MemDBState extends State<EncoderLoanPayRec> {
           Spacer(),
 
           // Download button
-          SizedBox(
+          ExportDropdownButton(
             height: buttonHeight,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: Icon(Icons.download, color: Colors.white),
-              label: Text(
-                "Download",
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: Size(100, buttonHeight),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
+            minWidth: 100,
+            onExportPdf: () async {
+              await ExportService.exportAndSharePdf(
+                context: context,
+                rows: loans,
+                title: 'Loan Records',
+                filename: 'loan_records_${DateTime.now().millisecondsSinceEpoch}.pdf',
+                columnOrder: ['ref', 'memName', 'amt', 'interest', 'start', 'due', 'instType', 'totalInst', 'instAmt', 'status'],
+                columnHeaders: {
+                  'ref': 'Loan ID',
+                  'memName': 'Member Name',
+                  'amt': 'Amount',
+                  'interest': 'Interest',
+                  'start': 'Start Date',
+                  'due': 'Due Date',
+                  'instType': 'Installment Type',
+                  'totalInst': 'Total Installments',
+                  'instAmt': 'Installment Amount',
+                  'status': 'Status',
+                },
+              );
+            },
+            onExportXlsx: () async {
+              await ExportService.exportAndShareExcel(
+                context: context,
+                rows: loans,
+                filename: 'loan_records_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+                sheetName: 'Loan Records',
+                columnOrder: ['ref', 'memName', 'amt', 'interest', 'start', 'due', 'instType', 'totalInst', 'instAmt', 'status'],
+                columnHeaders: {
+                  'ref': 'Loan ID',
+                  'memName': 'Member Name',
+                  'amt': 'Amount',
+                  'interest': 'Interest',
+                  'start': 'Start Date',
+                  'due': 'Due Date',
+                  'instType': 'Installment Type',
+                  'totalInst': 'Total Installments',
+                  'instAmt': 'Installment Amount',
+                  'status': 'Status',
+                },
+              );
+            },
           ),
         ],
       ),
@@ -253,13 +416,13 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                       return DataRow(cells: [
                         DataCell(Text(loan["ref"])),
                         DataCell(Text(loan["memName"])),
-                        DataCell(Text("₱${loan["amt"]}")),
+                        DataCell(Text("Php ${loan["amt"]}")),
                         DataCell(Text("${loan["interest"]}%")),
                         DataCell(Text(loan["start"])),
                         DataCell(Text(loan["due"])),
                         DataCell(Text(loan["instType"])),
                         DataCell(Text("${loan["totalInst"]}")),
-                        DataCell(Text("₱${loan["instAmt"]}")),
+                        DataCell(Text("Php ${loan["instAmt"]}")),
                         DataCell(Text(loan["status"])),
                       ]);
                     }).toList(),
@@ -391,22 +554,41 @@ class _MemDBState extends State<EncoderLoanPayRec> {
           Spacer(),
 
           // download button
-          SizedBox(
+          ExportDropdownButton(
             height: buttonHeight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-              },
-              icon: Icon(Icons.download, color: Colors.white),
-              label: Text(
-                "Download",
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: Size(100, buttonHeight),
-                padding: EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
+            minWidth: 100,
+            onExportPdf: () async {
+              await ExportService.exportAndSharePdf(
+                context: context,
+                rows: filteredPayments,
+                title: 'Payment Records',
+                filename: 'payment_records_${DateTime.now().millisecondsSinceEpoch}.pdf',
+                columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+                columnHeaders: {
+                  'payment_id': 'Payment ID',
+                  'payment_date': 'Payment Date',
+                  'amount': 'Amount',
+                  'payment_type': 'Payment Type',
+                  'status': 'Status',
+                },
+              );
+            },
+            onExportXlsx: () async {
+              await ExportService.exportAndShareExcel(
+                context: context,
+                rows: filteredPayments,
+                filename: 'payment_records_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+                sheetName: 'Payment Records',
+                columnOrder: ['payment_id', 'payment_date', 'amount', 'payment_type', 'status'],
+                columnHeaders: {
+                  'payment_id': 'Payment ID',
+                  'payment_date': 'Payment Date',
+                  'amount': 'Amount',
+                  'payment_type': 'Payment Type',
+                  'status': 'Status',
+                },
+              );
+            },
           ),
         ],
       ),
@@ -458,7 +640,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                         DataCell(Text("${pay["payment_id"] ?? ""}")),
                         DataCell(Text("${pay["approved_loan_id"] ?? ""}")),
                         DataCell(Text("${pay["installment_number"] ?? ""}")),
-                        DataCell(Text("₱${pay["amount"] ?? 0}")),
+                        DataCell(Text("Php ${pay["amount"] ?? 0}")),
                         DataCell(Text("${pay["payment_type"] ?? ""}")),
                         DataCell(Text("${pay["gcash_reference"] ?? ""}")),
                         DataCell(Text("${pay["bank_name"] ?? ""}")),

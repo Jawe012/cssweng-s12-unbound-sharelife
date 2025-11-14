@@ -12,10 +12,8 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // get auth service
   final authService = AuthService();
 
-  // text controllers
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
@@ -24,18 +22,15 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _showConfirmPassword = false;
-  
 
   @override
   void initState() {
     super.initState();
     _passwordController.addListener(() {
       final shouldShow = _passwordController.text.isNotEmpty;
-      if (shouldShow != _showConfirmPassword) {
-        setState(() => _showConfirmPassword = shouldShow);
-      }
+      if (shouldShow != _showConfirmPassword) setState(() => _showConfirmPassword = shouldShow);
     });
   }
 
@@ -62,38 +57,62 @@ class _RegisterPageState extends State<RegisterPage> {
     final dateOfBirth = _dateOfBirthController.text.trim();
     final contactNo = _contactNumberController.text.trim();
 
-
-    // INPUT VALIDATION //
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty || firstName.isEmpty || lastName.isEmpty || dateOfBirth.isEmpty || contactNo.isEmpty) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text("Please fill in all fields.")));
+    // Basic required fields
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty || firstName.isEmpty || lastName.isEmpty || contactNo.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill in all required fields.")));
       return;
     }
 
+    // Parse and validate DOB if provided
     String dobIso = '';
     if (dateOfBirth.isNotEmpty) {
       try {
-        final dobParts = dateOfBirth.split('/');
-        if (dobParts.length == 3) {
-          final month = int.parse(dobParts[0]);
-          final day = int.parse(dobParts[1]);
-          final year = int.parse(dobParts[2]);
-          final dt = DateTime(year, month, day);
-          dobIso = dt.toIso8601String().split('T')[0];
+        final parts = dateOfBirth.split('/');
+        if (parts.length != 3) throw FormatException('invalid');
+        final month = int.parse(parts[0]);
+        final day = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        final dt = DateTime(year, month, day);
+        final now = DateTime.now();
+        if (!(dt.year == year && dt.month == month && dt.day == day)) throw FormatException('invalid');
+        if (dt.isAfter(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date of birth can't be in the future.")));
+          return;
         }
+        int age = now.year - dt.year;
+        if (now.month < dt.month || (now.month == dt.month && now.day < dt.day)) age -= 1;
+        if (age < 18) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be at least 18 years old to register.')));
+          return;
+        }
+        dobIso = dt.toIso8601String().split('T')[0];
       } catch (_) {
-        dobIso = '';
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+        return;
       }
     }
+
     if (email.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text("Please enter a valid email address.")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a valid email address.")));
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text("Passwords don't match")));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords don't match")));
+      return;
+    }
+
+    // Validate password against central policy
+    final pwErr = authService.validatePassword(password);
+    if (pwErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pwErr)));
+      return;
+    }
+
+    // Validate contact number: allow optional leading '+' and 7-15 digits
+    final normalizedContact = contactNo.replaceAll(RegExp(r'[\s\-()]'), '');
+    if (!RegExp(r'^\+?\d{7,15}\$').hasMatch(normalizedContact)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid contact number (7-15 digits, optional leading +).')));
       return;
     }
 
@@ -101,9 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final userExists = await authService.checkUserExists(email, username: username);
       if (userExists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User with this email or username already exists."))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User with this email or username already exists.")));
         return;
       }
     } catch (e) {
@@ -113,7 +130,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       // Sign up with profile data saved locally
       final response = await authService.signUpWithEmailPassword(
-        email, 
+        email,
         password,
         username: username,
         firstName: firstName,
@@ -123,58 +140,29 @@ class _RegisterPageState extends State<RegisterPage> {
       );
 
       if (response.user != null) {
-        // Show success message and redirect to login
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please check your email to confirm your registration. Your profile will be completed automatically when you click the confirmation link."))
-        );
-        
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please check your email to confirm your registration. Your profile will be completed automatically when you click the confirmation link.")));
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => LoginPage(),
-              transitionDuration: const Duration(milliseconds: 150),
-              reverseTransitionDuration: const Duration(milliseconds: 150),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            )
-          );
+          Navigator.of(context).pushReplacement(PageRouteBuilder(pageBuilder: (context, animation, secondaryAnimation) => LoginPage(), transitionDuration: const Duration(milliseconds: 150), reverseTransitionDuration: const Duration(milliseconds: 150), transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          }));
         }
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Sign up did not complete. Please try again."))
-      );
-
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Sign up did not complete. Please try again.")));
     } on AuthException catch (authError) {
-  final errMsg = authError.message.toLowerCase();
-      if (errMsg.contains('already registered') ||
-          errMsg.contains('already exists') ||
-          errMsg.contains('user already registered') ||
-          (errMsg.contains('duplicate') && errMsg.contains('email')) ||
-          (errMsg.contains('email') && errMsg.contains('exists'))) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User with this email already exists."))
-        );
+      final errMsg = authError.message.toLowerCase();
+      if (errMsg.contains('already registered') || errMsg.contains('already exists') || errMsg.contains('user already registered') || (errMsg.contains('duplicate') && errMsg.contains('email')) || (errMsg.contains('email') && errMsg.contains('exists'))) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User with this email already exists.")));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Sign up error: ${authError.message}"))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sign up error: ${authError.message}")));
       }
     } catch (e) {
       final err = e.toString().toLowerCase();
-      if (err.contains('already registered') ||
-          err.contains('already exists') ||
-          err.contains('user already registered') ||
-          err.contains('duplicate') && err.contains('email')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User with this email already exists."))
-        );
+      if (err.contains('already registered') || err.contains('already exists') || err.contains('user already registered') || err.contains('duplicate') && err.contains('email')) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("User with this email already exists.")));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/features/encoder/encoder_member_register.dart';
 
@@ -56,23 +58,113 @@ class _EncAppliformState extends State<EncAppliform> {
     return Row(
       children: [
         Spacer(),
-        SizedBox(
+        ExportDropdownButton(
           height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download,
-                color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            // Build loan application data from form
+            final Map<String, dynamic> applicationData = {
+              'application_date': appliDateController.text,
+              'first_name': fNameController.text,
+              'last_name': lNameController.text,
+              'middle_name': '',
+              'date_of_birth': bDateController.text,
+              'address': addrController.text,
+              'phone': phoneNumController.text,
+              'email': emailController.text,
+              'loan_amount': loanAmtController.text,
+              'annual_income': anlIncController.text,
+              'loan_type': instController.text,
+              'loan_purpose': reasonController.text,
+              'payment_term': termController.text,
+              'business_name': businessController.text,
+              'spouse_first_name': spouseFNameController.text,
+              'spouse_last_name': spouseLNameController.text,
+              'child_first_name': childFNameController.text,
+              'child_last_name': childLNameController.text,
+              'group_affiliation': groupController.text,
+            };
+            
+            try {
+              final bytes = await ExportService.buildLoanApplicationPdf(applicationData);
+              final result = await ExportService.sharePdf(bytes, 
+                filename: 'loan_application_${fNameController.text}_${lNameController.text}_${DateTime.now().millisecondsSinceEpoch}.pdf'
+              );
+              if (result.contains('/') || result.contains('\\')) {
+                ExportService.showExportMessage(context, 'Loan Application PDF saved to: $result');
+              } else {
+                ExportService.showExportMessage(context, 'Loan Application PDF exported successfully');
+              }
+            } catch (e) {
+              ExportService.showExportMessage(context, 'Export failed: $e');
+            }
+          },
+          onExportXlsx: () async {
+            final rows = [{
+              'field': 'Application Date',
+              'value': appliDateController.text,
+            }, {
+              'field': 'First Name',
+              'value': fNameController.text,
+            }, {
+              'field': 'Last Name',
+              'value': lNameController.text,
+            }, {
+              'field': 'Date of Birth',
+              'value': bDateController.text,
+            }, {
+              'field': 'Address',
+              'value': addrController.text,
+            }, {
+              'field': 'Phone Number',
+              'value': phoneNumController.text,
+            }, {
+              'field': 'Email',
+              'value': emailController.text,
+            }, {
+              'field': 'Loan Amount',
+              'value': loanAmtController.text,
+            }, {
+              'field': 'Annual Income',
+              'value': anlIncController.text,
+            }, {
+              'field': 'Installment Type',
+              'value': instController.text,
+            }, {
+              'field': 'Repayment Term',
+              'value': termController.text,
+            }, {
+              'field': 'Business Name',
+              'value': businessController.text,
+            }, {
+              'field': 'Loan Reason/Purpose',
+              'value': reasonController.text,
+            }, {
+              'field': 'Spouse First Name',
+              'value': spouseFNameController.text,
+            }, {
+              'field': 'Spouse Last Name',
+              'value': spouseLNameController.text,
+            }, {
+              'field': 'Child First Name',
+              'value': childFNameController.text,
+            }, {
+              'field': 'Child Last Name',
+              'value': childLNameController.text,
+            }, {
+              'field': 'Group Affiliation',
+              'value': groupController.text,
+            }];
+            
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: rows,
+              filename: 'loan_application_${fNameController.text}_${lNameController.text}_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+              sheetName: 'Loan Application',
+              columnOrder: ['field', 'value'],
+              columnHeaders: {'field': 'Field', 'value': 'Value'},
+            );
+          },
         ),
       ]
     );
@@ -464,7 +556,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
-                hint: "₱0"
+                hint: "Php 0"
               ),
             ),
             SizedBox(width: 16),
@@ -472,7 +564,7 @@ class _EncAppliformState extends State<EncAppliform> {
               child: NumberInputField(
                 label: "Annual Income",
                 controller: anlIncController,
-                hint: "₱0"
+                hint: "Php 0"
               ),
             ),
           ],
@@ -488,6 +580,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 items: [
                   "3 months",
                   "6 months",
+                  "12 months",
                 ],
               ),
             ),

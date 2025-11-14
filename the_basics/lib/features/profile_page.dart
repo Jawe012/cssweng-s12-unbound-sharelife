@@ -4,6 +4,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,6 +23,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
+  bool _loading = true;
+  bool _notSignedIn = false;
+
+  // profile fields
+  String _firstName = '';
+  String _lastName = '';
+  String _role = '';
+  String _username = '';
+  String _dob = '';
+  String _contactnum = '';
+  String _email = '';
+  String _recogDate = '';
+  String _status = '';
+  String _loanStatus = '';
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -64,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
 
-  Widget _personalInfo(String username, String DOB, String contactnum, String email) {
+  Widget _personalInfo(String username, String dob, String contactnum, String email) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,7 +94,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         SizedBox(height: contentgap),
         Text(
-          "Date of Birth: $DOB",
+          "Date of Birth: ${(() {
+            if (dob.isEmpty) return 'N/A';
+            final dt = DateTime.tryParse(dob);
+            if (dt != null) {
+              final y = dt.year.toString().padLeft(4, '0');
+              final m = dt.month.toString().padLeft(2, '0');
+              final d = dt.day.toString().padLeft(2, '0');
+              return '$y-$m-$d';
+            }
+            return dob;
+          })()}",
           style: TextStyle(fontSize: contentsize, color: Colors.black)
         ),
         SizedBox(height: contentgap),
@@ -124,6 +149,158 @@ class _ProfilePageState extends State<ProfilePage> {
       ]
     );
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _loading = true;
+      _notSignedIn = false;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        setState(() {
+          _notSignedIn = true;
+          _loading = false;
+        });
+        return;
+      }
+
+      final userId = user.id;
+      _email = user.email ?? '';
+
+      debugPrint('🔍 Loading profile for user_id: $userId, email: $_email');
+
+      Map<String, dynamic>? asMap(dynamic raw) {
+        if (raw == null) return null;
+        if (raw is Map<String, dynamic>) return raw;
+        if (raw is Map) return Map<String, dynamic>.from(raw);
+        return null;
+      }
+
+      // helper to try multiple possible column names (returns first non-empty value)
+      String pick(Map<String, dynamic>? m, List<String> keys) {
+        if (m == null) return '';
+        for (final k in keys) {
+          if (m.containsKey(k) && m[k] != null) return m[k].toString();
+        }
+        return '';
+      }
+
+      // Try staff first by user_id, then by email if not found
+      dynamic staffRaw;
+      try {
+        staffRaw = await supabase.from('staff').select('*').eq('user_id', userId).maybeSingle();
+      } catch (e) {
+        debugPrint('Staff by user_id query failed: $e');
+      }
+      debugPrint('staffRaw (after user_id query): $staffRaw');
+      var staffResp = asMap(staffRaw);
+      if (staffResp == null && _email.isNotEmpty) {
+        try {
+          staffRaw = await supabase.from('staff').select('*').eq('email_address', _email).maybeSingle();
+          staffResp = asMap(staffRaw);
+        } catch (e) {
+          debugPrint('Staff by email query failed: $e');
+        }
+      }
+      debugPrint('staffRaw (final): $staffRaw');
+
+      if (staffResp != null) {
+        setState(() {
+          _firstName = pick(staffResp, ['first_name', 'firstname', 'given_name']);
+          _lastName = pick(staffResp, ['last_name', 'lastname', 'family_name']);
+          _role = pick(staffResp, ['role']) == '' ? 'Staff' : pick(staffResp, ['role']);
+          _username = pick(staffResp, ['username', 'user_name', 'user']);
+          _contactnum = pick(staffResp, ['contact_number', 'contact_no', 'contact']);
+          _dob = pick(staffResp, ['date_of_birth', 'dob']);
+          _recogDate = 'N/A';
+          _status = 'N/A';
+          _loanStatus = 'N/A';
+        });
+        debugPrint('✅ Loaded staff profile: $_firstName $_lastName');
+      } else {
+        // Try members table by user_id then email
+        dynamic memRaw;
+        try {
+          memRaw = await supabase.from('members').select('*').eq('user_id', userId).maybeSingle();
+        } catch (e) {
+          debugPrint('Members by user_id query failed: $e');
+        }
+        debugPrint('membersRaw (after user_id query): $memRaw');
+        var memResp = asMap(memRaw);
+        if (memResp == null && _email.isNotEmpty) {
+          try {
+            memRaw = await supabase.from('members').select('*').eq('email_address', _email).maybeSingle();
+            memResp = asMap(memRaw);
+          } catch (e) {
+            debugPrint('Members by email query failed: $e');
+          }
+        }
+        debugPrint('membersRaw (final): $memRaw');
+
+        if (memResp != null) {
+          setState(() {
+            _firstName = pick(memResp, ['first_name', 'firstname', 'given_name']);
+            _lastName = pick(memResp, ['last_name', 'lastname', 'family_name']);
+            final r = pick(memResp, ['role']);
+            _role = r == '' ? 'Member' : r;
+            _username = pick(memResp, ['username', 'user_name', 'user']);
+            _contactnum = pick(memResp, ['contact_number', 'contact_no', 'contact']);
+            _dob = pick(memResp, ['date_of_birth', 'dob']);
+            _recogDate = pick(memResp, ['recognition_date', 'recognitionDate']);
+            _status = pick(memResp, ['status']) == '' ? 'active' : pick(memResp, ['status']);
+          });
+          debugPrint('✅ Loaded member profile: $_firstName $_lastName');
+
+          // Determine member id column (supporting 'member_id' or 'id')
+          dynamic memberIdRaw = memResp['member_id'] ?? memResp['id'] ?? memResp['memberid'] ?? memResp['member_id_int'] ?? memResp['member_id_str'];
+          if (memberIdRaw == null) {
+            debugPrint('Member id not found on member record; skipping loan status fetch. memResp keys: ${memResp.keys.toList()}');
+            setState(() => _loanStatus = 'No loan applications');
+          } else {
+            // use memberIdRaw as-is (supabase can match strings or ints depending on column type)
+            try {
+              debugPrint('Fetching loan status for member_id = $memberIdRaw');
+              final loanResp = await supabase
+                  .from('loan_application')
+                  .select('status')
+                  .eq('member_id', memberIdRaw)
+                  .order('created_at', ascending: false)
+                  .limit(1)
+                  .maybeSingle();
+
+              debugPrint('loanResp: $loanResp');
+              final loanMap = asMap(loanResp);
+              if (loanMap != null && loanMap['status'] != null) {
+                setState(() => _loanStatus = loanMap['status'].toString());
+              } else {
+                setState(() => _loanStatus = 'No loan applications');
+              }
+            } catch (e) {
+              debugPrint('Error fetching loan status: $e');
+              setState(() => _loanStatus = 'No loan applications');
+            }
+          }
+        } else {
+          debugPrint('❌ No data found in staff or members tables for user_id/email');
+          debugPrint('💡 Check if user_id or email exists in your database tables');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading profile: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -171,17 +348,35 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ),
                           SizedBox(height: 40),
-                          _profileHeading("Mark Anthony", "Garcia", "Member"),
-                          SizedBox(height: 80),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _personalInfo("Mark Anthony", "January 1, 1970", "0917 123 4567", "markanthony@email.com"),
-                              SizedBox(width: 80),
-                              _loanInfo("January 1, 2020", "Active", "Active"),
-                            ],
-                          )
+                          if (_loading) ...[
+                            const SizedBox(height: 80),
+                            const Center(child: CircularProgressIndicator()),
+                          ] else if (_notSignedIn) ...[
+                            const SizedBox(height: 40),
+                            const Text('No user signed in', style: TextStyle(fontSize: 18)),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pushNamed(context, '/login'),
+                              child: const Text('Go to Login'),
+                            )
+                          ] else ...[
+                            _profileHeading(_firstName.isNotEmpty ? _firstName : 'First', _lastName.isNotEmpty ? _lastName : 'Last', _role.isNotEmpty ? _role : 'Member'),
+                            SizedBox(height: 80),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _personalInfo(
+                                  _username.isNotEmpty ? _username : '${_firstName.isNotEmpty ? _firstName : 'First'} ${_lastName.isNotEmpty ? _lastName : 'Last'}',
+                                  _dob.isNotEmpty ? _dob : 'N/A',
+                                  _contactnum.isNotEmpty ? _contactnum : 'N/A',
+                                  _email.isNotEmpty ? _email : 'no-email',
+                                ),
+                                SizedBox(width: 80),
+                                _loanInfo(_recogDate.isNotEmpty ? _recogDate : 'N/A', _status.isNotEmpty ? _status : 'N/A', _loanStatus.isNotEmpty ? _loanStatus : 'N/A'),
+                              ],
+                            )
+                          ]
                         ],
                       ),
                     ),
@@ -194,5 +389,5 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
 
-    }
+  }
   }

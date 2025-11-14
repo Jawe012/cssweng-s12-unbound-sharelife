@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
+import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -295,23 +297,81 @@ class _MemAppliformState extends State<MemAppliform> {
     return Row(
       children: [
         Spacer(),
-        SizedBox(
+        ExportDropdownButton(
           height: 28,
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download,
-                color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              minimumSize: const Size(100, 28),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
+          minWidth: 100,
+          onExportPdf: () async {
+            // Export current loan application as PDF
+            final appData = {
+              'member_first_name': fNameController.text,
+              'member_last_name': lNameController.text,
+              'member_birth_date': bDateController.text,
+              'member_email': emailController.text,
+              'member_phone': phoneNumController.text,
+              'address': addrController.text,
+              'loan_amount': loanAmtController.text,
+              'annual_income': anlIncController.text,
+              'business_type': businessTypeController.text,
+              'installment': instController.text,
+              'repayment_term': termController.text,
+              'reason': reasonController.text,
+              'comaker_spouse_first_name': spouseFNameController.text,
+              'comaker_spouse_last_name': spouseLNameController.text,
+              'comaker_child_first_name': childFNameController.text,
+              'comaker_child_last_name': childLNameController.text,
+              'created_at': appliDateController.text,
+            };
+            final bytes = await ExportService.buildLoanApplicationPdf(appData);
+            final result = await ExportService.sharePdf(bytes, filename: 'loan_application.pdf');
+            if (result.contains('/') || result.contains('\\')) {
+              ExportService.showExportMessage(context, 'Loan application PDF saved to: $result');
+            } else {
+              ExportService.showExportMessage(context, 'Loan application exported as PDF');
+            }
+          },
+          onExportXlsx: () async {
+            // Export as table format
+            final appData = [{
+              'Field': 'Name',
+              'Value': '${fNameController.text} ${lNameController.text}',
+            }, {
+              'Field': 'Date of Birth',
+              'Value': bDateController.text,
+            }, {
+              'Field': 'Email',
+              'Value': emailController.text,
+            }, {
+              'Field': 'Phone',
+              'Value': phoneNumController.text,
+            }, {
+              'Field': 'Address',
+              'Value': addrController.text,
+            }, {
+              'Field': 'Loan Amount',
+              'Value': loanAmtController.text,
+            }, {
+              'Field': 'Annual Income',
+              'Value': anlIncController.text,
+            }, {
+              'Field': 'Business Type',
+              'Value': businessTypeController.text,
+            }, {
+              'Field': 'Installment',
+              'Value': instController.text,
+            }, {
+              'Field': 'Repayment Term',
+              'Value': termController.text,
+            }, {
+              'Field': 'Reason',
+              'Value': reasonController.text,
+            }];
+            await ExportService.exportAndShareExcel(
+              context: context,
+              rows: appData,
+              filename: 'loan_application.xlsx',
+              sheetName: 'Loan Application',
+            );
+          },
         ),
       ]
     );
@@ -353,7 +413,7 @@ class _MemAppliformState extends State<MemAppliform> {
                 child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
-                hint: "₱0",
+                hint: "Php 0",
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Required';
@@ -370,7 +430,7 @@ class _MemAppliformState extends State<MemAppliform> {
               child: NumberInputField(
                 label: "Annual Income",
                 controller: anlIncController,
-                hint: "₱0",
+                hint: "Php 0",
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Required';

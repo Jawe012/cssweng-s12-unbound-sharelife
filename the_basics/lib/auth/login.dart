@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/auth_service.dart';
 import 'package:the_basics/core/widgets/auth_navbar.dart';
+import 'package:the_basics/core/utils/remember_me.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +17,26 @@ class _LoginPageState extends State<LoginPage> {
   // text controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // load remembered email if any
+    RememberMe.getEmail().then((email) {
+      if (email != null && email.isNotEmpty) {
+        _emailController.text = email;
+        setState(() => _rememberMe = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   // login button pressed
   void login() async {
@@ -26,6 +47,12 @@ class _LoginPageState extends State<LoginPage> {
     // attempt login...
     try {
       await authService.signInWithEmailPassword(email, password);
+      // On success, persist or clear remembered email as chosen
+      if (_rememberMe) {
+        await RememberMe.saveEmail(email);
+      } else {
+        await RememberMe.clear();
+      }
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -84,7 +111,9 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {}, // No forgot password page yet
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/reset-password');
+                        }, 
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(0, 0),
@@ -105,8 +134,8 @@ class _LoginPageState extends State<LoginPage> {
                     Row(
                       children: [
                         Checkbox(
-                          value: false,
-                          onChanged: (value) {},
+                          value: _rememberMe,
+                          onChanged: (value) => setState(() => _rememberMe = value ?? false),
                         ),
                         const Text('Remember me?'),
                       ],

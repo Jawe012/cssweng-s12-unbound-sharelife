@@ -294,7 +294,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
   DataRow _buildRow(Map<String, dynamic> payment) {
     final memberName = "${payment['member_first_name'] ?? ''} ${payment['member_last_name'] ?? ''}".trim();
     final loanId = payment['approved_loan_id']?.toString() ?? 'N/A';
-    final amount = '₱${payment['amount'] ?? 0}';
+  final amount = 'Php ${payment['amount'] ?? 0}';
     final paymentType = payment['payment_type'] ?? 'N/A';
     final date = formatDate(payment['created_at']);
 
