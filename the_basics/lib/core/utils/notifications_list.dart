@@ -11,9 +11,8 @@ class NotificationsListPage extends StatefulWidget {
 class _NotificationsListPageState extends State<NotificationsListPage> {
   String searchQuery = "";
   String selectedDateFilter = "All";
-
-  // notifications shown in the list
-  List<Map<String, String>> notifications = [];
+  List<Map<String, dynamic>> notifications = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -21,11 +20,25 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
     _loadNotifications();
   }
 
+  // Helper: format loan reference as LN-YEAR-ID
+  String _formatLoanReference(int loanId, DateTime date) {
+    return 'LN-${date.year}-$loanId';
+  }
+
+  // Helper: format payment reference as PMT-YEAR-ID
+  String _formatPaymentReference(int paymentId, DateTime date) {
+    return 'PMT-${date.year}-$paymentId';
+  }
+
   Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
     if (user == null) {
-      setState(() => notifications = []);
+      setState(() {
+        notifications = [];
+        _isLoading = false;
+      });
       return;
     }
     final userId = user.id;
@@ -48,32 +61,10 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
         }
       }
 
-      //building the notifications list
-      final List notifs = [];
+      // Building the notifications list
+      final List<Map<String, dynamic>> notifsList = [];
 
-      // Query rejected loan applications
-      final rejectedQuery = client.from('loan_application').select('application_id, member_id, reason, created_at');
-      if (memberId != null) {
-        // safe: compare int to int column
-        rejectedQuery.eq('member_id', memberId);
-      } else if (userEmail != null) {
-        // fallback: compare email column (if present)
-        rejectedQuery.eq('member_email', userEmail);
-      }
-      final rejectedResp = await rejectedQuery;
-
-      // Query approved loans (table/columns may differ in your schema)
-      final approvedQuery = client.from('approved_loans').select('application_id, member_id, created_at');
-      if (memberId != null) {
-        approvedQuery.eq('member_id', memberId);
-      } else if (userEmail != null) {
-        approvedQuery.eq('member_email', userEmail);
-      }
-      final approvedResp = await approvedQuery;
-
-      final List<Map<String, String>> notifsList = [];
-
-      // helper: parse various date representations into local DateTime
+      // Helper: parse various date representations into local DateTime
       DateTime _parseDateDynamic(dynamic value) {
         if (value == null) return DateTime.fromMillisecondsSinceEpoch(0);
         if (value is DateTime) return value.toLocal();
@@ -86,10 +77,10 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
         return DateTime.fromMillisecondsSinceEpoch(0);
       }
 
-      // helper: format DateTime to 'Mon d, yyyy h:mm AM/PM'
+      // Helper: format DateTime to 'Mon d, yyyy h:mm AM/PM'
       String _formatDateTime(DateTime dt) {
         if (dt.millisecondsSinceEpoch == 0) return '';
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         final month = months[dt.month - 1];
         final day = dt.day;
         final year = dt.year;
@@ -101,44 +92,202 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
         return '$month $day, $year $hour:$minute $period';
       }
 
-      for (final row in approvedResp) {
-          final loanId = (row['loan_id'] ?? row['application_id'] ?? '').toString();
-          final rawDate = row['created_at'] ?? row['date_approved'] ?? '';
-          final dt = _parseDateDynamic(rawDate);
-          notifsList.add({
-            "title": "Loan Approved",
-            "body": "Your loan $loanId has been approved. Have a wonderful day!",
-            "date": _formatDateTime(dt),
-            "_ts": dt.millisecondsSinceEpoch.toString(),
-          });
-        }
+      // Query approved loans
+      if (memberId != null) {
+        try {
+          final approvedResp = await client
+              .from('approved_loans')
+              .select('application_id, member_id, created_at, member_first_name')
+              .eq('member_id', memberId);
 
-      for (final row in rejectedResp) {
-          final id = (row['application_id'] ?? row['id'] ?? '').toString();
-          final rawDate = row['created_at'] ?? row['date_submitted'] ?? '';
-          final reason = (row['reason'] ?? '').toString();
-          final dt = _parseDateDynamic(rawDate);
-          notifsList.add({
-            "title": "Loan Rejected",
-            "body": "Your loan application $id was rejected. Reason: $reason",
-            "date": _formatDateTime(dt),
-            "_ts": dt.millisecondsSinceEpoch.toString(),
-          });
+          for (final row in approvedResp) {
+            final loanId = (row['application_id'] as int?) ?? 0;
+            final rawDate = row['created_at'] ?? '';
+            final firstName = row['member_first_name'] ?? 'Member';
+            final dt = _parseDateDynamic(rawDate);
+            final loanRef = _formatLoanReference(loanId, dt);
+            
+            notifsList.add({
+              "title": "Loan Approved",
+              "body": "Dear $firstName,\n\nWe are pleased to inform you that your loan application with reference number [$loanRef] has been approved.\n\nPlease wait for further instructions regarding the next steps of your disbursement. A representative will contact you shortly with the necessary details.\n\nYou may now also view the details of your approved loan by logging in to your account and clicking \"My Loans.\" If you have any questions or require assistance, please don't hesitate to contact us.\n\nThank you for your continued trust and support.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "loan_approved",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": loanRef,
+            });
+          }
+        } catch (e) {
+          print('Error fetching approved loans: $e');
         }
+      }
 
-      // sort using epoch stored in _ts (desc)
+      // Query rejected loan applications
+      if (memberId != null) {
+        try {
+          final rejectedResp = await client
+              .from('loan_application')
+              .select('application_id, member_id, remarks, date_reviewed, member_first_name, status')
+              .eq('member_id', memberId)
+              .eq('status', 'Rejected');
+
+          for (final row in rejectedResp) {
+            final loanId = (row['application_id'] as int?) ?? 0;
+            final rawDate = row['date_reviewed'] ?? '';
+            final remarks = (row['remarks'] ?? 'N/A').toString();
+            final firstName = row['member_first_name'] ?? 'Member';
+            final dt = _parseDateDynamic(rawDate);
+            final loanRef = _formatLoanReference(loanId, dt);
+            
+            notifsList.add({
+              "title": "Loan Rejected",
+              "body": "Dear $firstName,\n\nWe thank you once again for applying for a loan with Sharelife Consumers Cooperative. However, after careful consideration, we regret to inform you that we are unable to approve your loan application with reference number [$loanRef] at this time.\n\n Due to this Reason: $remarks\n\nWe understand that this may be disappointing news. If you have any questions about this decision or would like to discuss future options, please do not hesitate to contact us.\n\nOnce again, thank you for your understanding and continued interest.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "loan_rejected",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": loanRef,
+            });
+          }
+        } catch (e) {
+          print('Error fetching rejected loans: $e');
+        }
+      }
+
+      // Query valid payments
+      if (memberId != null) {
+        try {
+          final validPaymentsResp = await client
+              .from('payments')
+              .select('payment_id, approved_loan_id, amount, payment_date, created_at, status')
+              .eq('status', 'Validated')
+              .order('created_at', ascending: false);
+
+          for (final row in validPaymentsResp) {
+            final paymentId = (row['payment_id'] as int?) ?? 0;
+            final rawDate = row['created_at'] ?? row['payment_date'] ?? '';
+            final amount = (row['amount'] ?? 0).toString();
+            final dt = _parseDateDynamic(rawDate);
+            final paymentRef = _formatPaymentReference(paymentId, dt);
+            
+            notifsList.add({
+              "title": "Payment Confirmation",
+              "body": "Dear Member,\n\nWe have successfully received and verified your payment for your loan.\n\nYour account has been updated accordingly. You may view your latest payment details and remaining balance by logging in to your member account and clicking \"Payment Records\".\n\nThank you for your prompt payment and continued trust.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "payment_valid",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": paymentRef,
+              "amount": amount,
+            });
+          }
+        } catch (e) {
+          print('Error fetching valid payments: $e');
+        }
+      }
+
+      // Query invalid payments
+      if (memberId != null) {
+        try {
+          final invalidPaymentsResp = await client
+              .from('payments')
+              .select('payment_id, approved_loan_id, amount, payment_date, created_at, status')
+              .eq('status', 'Invalid')
+              .order('created_at', ascending: false);
+
+          for (final row in invalidPaymentsResp) {
+            final paymentId = (row['payment_id'] as int?) ?? 0;
+            final rawDate = row['created_at'] ?? row['payment_date'] ?? '';
+            final amount = (row['amount'] ?? 0).toString();
+            final dt = _parseDateDynamic(rawDate);
+            final paymentRef = _formatPaymentReference(paymentId, dt);
+            
+            notifsList.add({
+              "title": "Payment Verification Issue",
+              "body": "Dear Member,\n\nWe have received your submitted proof of payment for your loan. However, upon verification, we were unable to validate the payment details.\n\nTo complete your payment processing, please resubmit a valid proof of payment or contact our office for assistance.\n\nThank you for your understanding and cooperation.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "payment_invalid",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": paymentRef,
+              "amount": amount,
+            });
+          }
+        } catch (e) {
+          print('Error fetching invalid payments: $e');
+        }
+      } else if (userEmail != null) {
+        // Fallback: query by email if memberId not found
+        try {
+          final approvedResp = await client
+              .from('approved_loans')
+              .select('application_id, member_id, created_at, member_first_name')
+              .eq('member_email', userEmail);
+
+          for (final row in approvedResp) {
+            final loanId = (row['application_id'] as int?) ?? 0;
+            final rawDate = row['created_at'] ?? '';
+            final firstName = row['member_first_name'] ?? 'Member';
+            final dt = _parseDateDynamic(rawDate);
+            final loanRef = _formatLoanReference(loanId, dt);
+            
+            notifsList.add({
+              "title": "Loan Approved",
+              "body": "Dear $firstName,\n\nWe are pleased to inform you that your loan application with reference number [$loanRef] has been approved.\n\nPlease wait for further instructions regarding the next steps of your disbursement. A representative will contact you shortly with the necessary details.\n\nYou may now also view the details of your approved loan by logging in to your account and clicking \"My Loans.\" If you have any questions or require assistance, please don't hesitate to contact us.\n\nThank you for your continued trust and support.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "loan_approved",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": loanRef,
+            });
+          }
+
+          final rejectedResp = await client
+              .from('loan_application')
+              .select('application_id, member_id, reason, created_at, member_first_name, status')
+              .eq('member_email', userEmail)
+              .eq('status', 'Rejected');
+
+          for (final row in rejectedResp) {
+            final loanId = (row['application_id'] as int?) ?? 0;
+            final rawDate = row['created_at'] ?? '';
+            final reason = (row['reason'] ?? 'N/A').toString();
+            final firstName = row['member_first_name'] ?? 'Member';
+            final dt = _parseDateDynamic(rawDate);
+            final loanRef = _formatLoanReference(loanId, dt);
+            
+            notifsList.add({
+              "title": "Loan Rejected",
+              "body": "Dear $firstName,\n\nWe thank you once again for applying for a loan with Sharelife Consumers Cooperative. However, after careful consideration, we regret to inform you that we are unable to approve your loan application with reference number [$loanRef] at this time.\n\nReason: $reason\n\nWe understand that this may be disappointing news. If you have any questions about this decision or would like to discuss future options, please do not hesitate to contact us.\n\nOnce again, thank you for your understanding and continued interest.\n\nBest regards,\nSharelife Consumers Cooperative",
+              "date": _formatDateTime(dt),
+              "type": "loan_rejected",
+              "status": "read",
+              "_ts": dt.millisecondsSinceEpoch.toString(),
+              "loanRef": loanRef,
+            });
+          }
+        } catch (e) {
+          print('Error fetching notifications by email: $e');
+        }
+      }
+
+      // Sort by timestamp descending
       notifsList.sort((a, b) {
         final aTs = int.tryParse(a['_ts'] ?? '') ?? 0;
         final bTs = int.tryParse(b['_ts'] ?? '') ?? 0;
         return bTs.compareTo(aTs);
       });
 
-      setState(() => notifications = notifsList);
-
+      setState(() {
+        notifications = notifsList;
+        _isLoading = false;
+      });
     } catch (e) {
-      // On error, keep empty list but log
       print('Error loading notifications: $e');
-      setState(() => notifications = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading notifications: $e'), backgroundColor: Colors.red),
+      );
+      setState(() => _isLoading = false);
     }
   }
 
@@ -183,9 +332,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
                 // Date filter
                 Row(
                   children: [
@@ -207,9 +354,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
             // Notification List
             Expanded(
               child: Container(
@@ -225,44 +370,73 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
                     )
                   ],
                 ),
-                child: notifications.isEmpty
-                    ? const Center(child: Text("No notifications"))
-                    : ListView.builder(
-                        itemCount: notifications.length,
-                        itemBuilder: (context, index) {
-                          final notif = notifications[index];
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : notifications.isEmpty
+                        ? const Center(child: Text("No notifications"))
+                        : ListView.builder(
+                            itemCount: notifications.length,
+                            itemBuilder: (context, index) {
+                              final notif = notifications[index];
 
-                          // Apply search filter
-                          final title = notif["title"]!.toLowerCase();
-                          final body = notif["body"]!.toLowerCase();
-                          if (!title.contains(searchQuery.toLowerCase()) &&
-                              !body.contains(searchQuery.toLowerCase())) {
-                            return const SizedBox.shrink();
-                          }
+                              // Apply search filter
+                              final title = notif["title"]!.toLowerCase();
+                              final body = notif["body"]!.toLowerCase();
+                              if (!title.contains(searchQuery.toLowerCase()) &&
+                                  !body.contains(searchQuery.toLowerCase())) {
+                                return const SizedBox.shrink();
+                              }
 
-                          return Column(
-                            children: [
-                              ListTile(
-                                title: Text(notif["title"]!),
-                                subtitle: Text(
-                                  notif["body"]!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Text(notif["date"] ?? ""),
-                                onTap: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/notification-view',
-                                    arguments: notif,
-                                  );
-                                },
-                              ),
-                              Divider(height: 0.5, color: Colors.grey[300]),
-                            ],
-                          );
-                        },
-                      ),
+                              // Determine icon based on type
+                              IconData leadingIcon;
+                              Color leadingColor;
+                              switch (notif["type"]) {
+                                case 'loan_approved':
+                                  leadingIcon = Icons.check_circle;
+                                  leadingColor = Colors.green;
+                                  break;
+                                case 'loan_rejected':
+                                  leadingIcon = Icons.cancel;
+                                  leadingColor = Colors.red;
+                                  break;
+                                case 'payment_valid':
+                                  leadingIcon = Icons.payment;
+                                  leadingColor = Colors.blue;
+                                  break;
+                                case 'payment_invalid':
+                                  leadingIcon = Icons.warning;
+                                  leadingColor = Colors.orange;
+                                  break;
+                                default:
+                                  leadingIcon = Icons.notifications;
+                                  leadingColor = Colors.grey;
+                              }
+
+                              return Column(
+                                children: [
+                                  ListTile(
+                                    tileColor: (notif["status"] == 'unread') ? Colors.blue[50] : null,
+                                    leading: Icon(leadingIcon, color: leadingColor),
+                                    title: Text(notif["title"]!),
+                                    subtitle: Text(
+                                      notif["body"]!,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: Text(notif["date"] ?? "", style: TextStyle(fontSize: 12)),
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        '/notification-view',
+                                        arguments: notif,
+                                      );
+                                    },
+                                  ),
+                                  Divider(height: 0.5, color: Colors.grey[300]),
+                                ],
+                              );
+                            },
+                          ),
               ),
             ),
           ],
