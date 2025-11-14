@@ -188,11 +188,12 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
 
       // Query invalid payments
       if (memberId != null) {
+        final statusFilter = 'Invalidated';
         try {
           final invalidPaymentsResp = await client
               .from('payments')
               .select('payment_id, approved_loan_id, amount, payment_date, created_at, status')
-              .eq('status', 'Invalid')
+              .eq('status', statusFilter)
               .order('created_at', ascending: false);
 
           for (final row in invalidPaymentsResp) {
