@@ -15,6 +15,33 @@ class ExportService {
   // Currency formatter
   static final NumberFormat currencyFormat = NumberFormat.currency(symbol: 'Php ', decimalDigits: 2);
   static final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
+
+  /// Safely format currency as value for ui
+  static String safeCurrency(dynamic value) {
+    if (value == null) return currencyFormat.format(0);
+
+    if (value is num) return currencyFormat.format(value);
+
+    if (value is String) {
+      final s = value.trim();
+      if (s.isEmpty) return currencyFormat.format(0);
+
+      // If already looks like formatted currency or a label, return as-is
+      if (s.startsWith('Php') || s.startsWith('₱') || RegExp(r'[A-Za-z]').hasMatch(s)) {
+        return s;
+      }
+
+      // Clean common group separators and try parse
+      final cleaned = s.replaceAll(RegExp(r'[,\s]'), '');
+      final parsed = double.tryParse(cleaned);
+      if (parsed != null) return currencyFormat.format(parsed);
+
+      return s;
+    }
+
+    // fallback
+    return value.toString();
+  }
   
   /// Helper to format cell values
   static String _formatValue(dynamic value) {
@@ -105,9 +132,7 @@ class ExportService {
       final fontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
       baseFont = pw.Font.ttf(fontData);
     } catch (e) {
-      // If loading fails (missing asset or runtime), fall back to null and let the PDF
-      // renderer use default fonts for other text. The currency glyph may not render
-      // correctly in the fallback, so ensure the font asset is added to pubspec.yaml.
+      // Fall back to regular font if loading fails
       baseFont = null;
     }
 
@@ -393,7 +418,7 @@ class ExportService {
     );
   }
 
-  /// Share PDF (cross-platform - saves and returns path on platforms where sharing isn't available)
+  /// Share PDF
   static Future<String> sharePdf(Uint8List bytes, {String filename = 'document.pdf'}) async {
     try {
       // Try to use printing package's share first (works on mobile)

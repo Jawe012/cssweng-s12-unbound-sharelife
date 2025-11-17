@@ -262,7 +262,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -287,7 +287,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -335,7 +335,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -659,7 +659,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         _showError("Please enter a valid amount");
         return;
       }
-  debugPrint('[EncoderPayment] Payment amount: Php $amount');
+  debugPrint('[EncoderPayment] Payment amount: ${ExportService.safeCurrency(amount)}');
 
       // Method-specific validation
       if (selectedPaymentMethod == 'Cash') {

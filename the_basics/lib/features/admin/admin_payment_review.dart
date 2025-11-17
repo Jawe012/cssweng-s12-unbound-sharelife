@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'dart:async';
 
 class AdminPaymentReview extends StatefulWidget {
@@ -294,7 +295,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
   DataRow _buildRow(Map<String, dynamic> payment) {
     final memberName = "${payment['member_first_name'] ?? ''} ${payment['member_last_name'] ?? ''}".trim();
     final loanId = payment['approved_loan_id']?.toString() ?? 'N/A';
-  final amount = 'Php ${payment['amount'] ?? 0}';
+  final amount = ExportService.safeCurrency(payment['amount']);
     final paymentType = payment['payment_type'] ?? 'N/A';
     final date = formatDate(payment['created_at']);
 

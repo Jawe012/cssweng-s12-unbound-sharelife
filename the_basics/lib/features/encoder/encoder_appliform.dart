@@ -556,7 +556,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
-                hint: "Php 0"
+                hint: ExportService.currencyFormat.format(0),
               ),
             ),
             SizedBox(width: 16),
@@ -564,7 +564,7 @@ class _EncAppliformState extends State<EncAppliform> {
               child: NumberInputField(
                 label: "Annual Income",
                 controller: anlIncController,
-                hint: "Php 0"
+                hint: ExportService.currencyFormat.format(0),
               ),
             ),
           ],

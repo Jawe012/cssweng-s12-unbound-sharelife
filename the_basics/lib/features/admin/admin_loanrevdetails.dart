@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 // removed email/edge-function usage — notifications are driven by the app
 
 class LoanReviewDetailsPage extends StatefulWidget {
@@ -334,9 +335,9 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Php $loanAmt', style: TextStyle(fontSize: contentFont)),
+                Text(ExportService.safeCurrency(loanAmt), style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
-                Text('Php $annualInc', style: TextStyle(fontSize: contentFont)),
+                Text(ExportService.safeCurrency(annualInc), style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$installments', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),

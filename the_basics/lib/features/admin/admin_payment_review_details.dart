@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 // removed email/edge-function usage — notifications are driven by the app
 
 class AdminPaymentReviewDetails extends StatefulWidget {
@@ -338,7 +339,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                 SizedBox(height: textSpacing),
                 Text(memberName, style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
-                Text('Php ${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: contentFont)),
+                Text(ExportService.safeCurrency(amount), style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$installmentNumber', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),

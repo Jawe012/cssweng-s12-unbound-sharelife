@@ -113,7 +113,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
         isLoading = false;
       });
 
-  debugPrint('[PaymentHistory] Loaded ${payments.length} payments. Total: Php $totalPaid');
+  debugPrint('[PaymentHistory] Loaded ${payments.length} payments. Total: ${ExportService.currencyFormat.format(totalPaid)}');
 
     } catch (e) {
       debugPrint('[PaymentHistory] Error fetching payment history: $e');
@@ -206,7 +206,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                 Text("Total Paid",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("Php ${totalPaid.toStringAsFixed(2)}"),
+                Text(ExportService.currencyFormat.format(totalPaid)),
               ],
             ),
           ),
@@ -260,7 +260,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                 Text("Pending Approval",
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                Text("Php ${pendingAmount.toStringAsFixed(2)}"),
+                Text(ExportService.currencyFormat.format(pendingAmount)),
               ],
             ),
           ),
@@ -547,7 +547,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                             DataCell(Text(payment["payment_id"].toString())),
                             DataCell(Text(payment["approved_loan_id"].toString())),
                             DataCell(Text(payment["installment_number"]?.toString() ?? 'N/A')),
-                            DataCell(Text("Php ${(payment["amount"] is num ? (payment["amount"] as num).toDouble() : double.tryParse(payment["amount"].toString()) ?? 0.0).toStringAsFixed(2)}")),
+                            DataCell(Text(ExportService.safeCurrency(payment["amount"]))),
                             DataCell(Text(payment["payment_type"] ?? 'N/A')),
                             DataCell(Text(_getReference(payment))),
                             DataCell(Text(_formatDate(payment["payment_date"]))),

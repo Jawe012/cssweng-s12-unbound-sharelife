@@ -111,7 +111,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     // Validate contact number: allow optional leading '+' and 7-15 digits
     final normalizedContact = contactNo.replaceAll(RegExp(r'[\s\-()]'), '');
-    if (!RegExp(r'^\+?\d{7,15}\$').hasMatch(normalizedContact)) {
+    if (!RegExp(r'^\+?\d{7,15}$').hasMatch(normalizedContact)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid contact number (7-15 digits, optional leading +).')));
       return;
     }

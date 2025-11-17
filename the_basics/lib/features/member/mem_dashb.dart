@@ -115,6 +115,33 @@ class _MemDBState extends State<MemberDB> {
     );
   }
 
+  // Sum loan amounts (robust to int/double/string values)
+  double _sumLoanAmounts() {
+    return loans.fold(0.0, (double prev, l) {
+      final amt = l['amt'];
+      if (amt == null) return prev;
+      if (amt is num) return prev + amt.toDouble();
+      if (amt is String) {
+        final parsed = double.tryParse(amt.replaceAll(RegExp(r'[^0-9\.-]'), ''));
+        return prev + (parsed ?? 0.0);
+      }
+      return prev;
+    });
+  }
+
+  String _formatCurrency(double value) {
+    // Format with comma thousand separators, drop decimals when .00
+    if (value == value.roundToDouble()) {
+      final intVal = value.toInt();
+      final s = intVal.toString().replaceAllMapped(RegExp(r"\B(?=(\d{3})+(?!\d))"), (m) => ',');
+      return 'Php $s';
+    }
+    final s = value.toStringAsFixed(2);
+    final parts = s.split('.');
+    final intPart = parts[0].replaceAllMapped(RegExp(r"\B(?=(\d{3})+(?!\d))"), (m) => ',');
+    return 'Php $intPart.${parts[1]}';
+  }
+
 
 
   void onSort(int columnIndex, bool ascending) {
@@ -173,6 +200,10 @@ class _MemDBState extends State<MemberDB> {
   }
 
   Widget summaryCards() {
+    final totalLoan = _sumLoanAmounts();
+    final principalRepayment = 0.0; // Replace with real data if available
+    final outstandingBalance = (totalLoan - principalRepayment).clamp(0.0, double.infinity);
+
     return Row(
       children: [
 
@@ -197,7 +228,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                  Text("Php 60,000"),
+                  Text(_formatCurrency(principalRepayment)),
               ],
             ),
           ),
@@ -225,7 +256,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                  Text("Php 40,000"),
+                  Text(_formatCurrency(outstandingBalance)),
               ],
             ),
           ),
@@ -253,7 +284,7 @@ class _MemDBState extends State<MemberDB> {
                     style: TextStyle(
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                  Text("Php 100,000"),
+                  Text(_formatCurrency(totalLoan)),
               ],
             ),
           ),
@@ -462,13 +493,13 @@ class _MemDBState extends State<MemberDB> {
                         .map(
                           (loan) => DataRow(cells: [
                             DataCell(Text(loan["ref"])),
-                            DataCell(Text("Php ${loan["amt"]}")),
+                            DataCell(Text(ExportService.currencyFormat.format((loan["amt"] is num) ? loan["amt"] : double.tryParse(loan["amt"].toString()) ?? 0))),
                             DataCell(Text("${loan["interest"]}%")),
                             DataCell(Text(loan["start"])),
                             DataCell(Text(loan["due"])),
                             DataCell(Text(loan["instType"])),
                             DataCell(Text("${loan["totalInst"]}")),
-                            DataCell(Text("Php ${loan["instAmt"]}")),
+                            DataCell(Text(ExportService.currencyFormat.format((loan["instAmt"] is num) ? loan["instAmt"] : double.tryParse(loan["instAmt"].toString()) ?? 0))),
                             DataCell(Text(loan["status"])),
                           ]),
                         )

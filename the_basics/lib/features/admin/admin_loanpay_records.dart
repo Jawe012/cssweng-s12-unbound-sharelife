@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminLoanPayRec extends StatefulWidget {
@@ -384,13 +385,13 @@ class _MemDBState extends State<AdminLoanPayRec> {
                       return DataRow(cells: [
                         DataCell(Text(loan["ref"])),
                         DataCell(Text(loan["memName"])),
-                        DataCell(Text("Php ${loan["amt"]}")),
+                        DataCell(Text(ExportService.safeCurrency(loan["amt"]))),
                         DataCell(Text("${loan["interest"]}%")),
                         DataCell(Text(loan["start"])),
                         DataCell(Text(loan["due"])),
                         DataCell(Text(loan["instType"])),
                         DataCell(Text("${loan["totalInst"]}")),
-                        DataCell(Text("Php ${loan["instAmt"]}")),
+                        DataCell(Text(ExportService.safeCurrency(loan["instAmt"]))),
                         DataCell(Text(loan["status"])),
                       ]);
                     }).toList(),
@@ -588,7 +589,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
                         DataCell(Text("${pay["payment_id"] ?? ""}")),
                         DataCell(Text("${pay["approved_loan_id"] ?? ""}")),
                         DataCell(Text("${pay["installment_number"] ?? ""}")),
-                        DataCell(Text("Php ${pay["amount"] ?? 0}")),
+                        DataCell(Text(ExportService.safeCurrency(pay["amount"]))),
                         DataCell(Text("${pay["payment_type"] ?? ""}")),
                         DataCell(Text("${pay["gcash_reference"] ?? ""}")),
                         DataCell(Text("${pay["bank_name"] ?? ""}")),

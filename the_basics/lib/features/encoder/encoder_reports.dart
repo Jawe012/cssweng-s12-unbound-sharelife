@@ -89,8 +89,8 @@ class _EncoderReportsState extends State<EncoderReports> {
           'loanType': loan['loan_type'] ?? 'Regular',
           'startDate': startDate.toString().split(' ')[0],
           'dueDate': dueDate.toString().split(' ')[0],
-          'principalAmt': 'Php ${(loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
-          'remainBal': 'Php ${(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
+          'principalAmt': ExportService.currencyFormat.format(loan['loan_amount'] ?? 0),
+          'remainBal': ExportService.currencyFormat.format(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0),
         });
       }
 
@@ -150,7 +150,7 @@ class _EncoderReportsState extends State<EncoderReports> {
           'memName': memberName,
           'dueDate': dueDate.toString().split(' ')[0],
           'daysOverdue': daysOverdue > 0 ? daysOverdue : 0,
-          'remainBal': 'Php ${(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0).toStringAsFixed(2)}',
+          'remainBal': ExportService.currencyFormat.format(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0),
           'contactNo': contactNo,
         });
       }
@@ -217,9 +217,9 @@ class _EncoderReportsState extends State<EncoderReports> {
         return {
           'memName': summary['memName'],
           'totalLoans': summary['totalLoans'],
-          'totalBorrowed': 'Php ${summary['totalBorrowed'].toStringAsFixed(2)}',
-          'totalPaid': 'Php ${summary['totalPaid'].toStringAsFixed(2)}',
-          'remainBal': 'Php ${summary['remainBal'].toStringAsFixed(2)}',
+          'totalBorrowed': ExportService.currencyFormat.format(summary['totalBorrowed']),
+          'totalPaid': ExportService.currencyFormat.format(summary['totalPaid']),
+          'remainBal': ExportService.currencyFormat.format(summary['remainBal']),
           'loanStatus': summary['loanStatus'],
         };
       }).toList();
@@ -281,7 +281,7 @@ class _EncoderReportsState extends State<EncoderReports> {
         fetchedPayments.add({
           'paymentID': payment['payment_id']?.toString() ?? 'N/A',
           'loanRef': loanRef,
-          'amtPaid': 'Php ${(payment['amount'] ?? 0).toStringAsFixed(2)}',
+          'amtPaid': ExportService.currencyFormat.format(payment['amount'] ?? 0),
           'payDate': payment['payment_date'] != null 
               ? DateTime.parse(payment['payment_date']).toString().split(' ')[0]
               : 'N/A',
@@ -333,19 +333,19 @@ class _EncoderReportsState extends State<EncoderReports> {
         _voucherRevenueData = [
           {
             'metric': 'Total Disbursed',
-            'value': 'Php ${totalDisbursed.toStringAsFixed(2)}',
+            'value': ExportService.currencyFormat.format(totalDisbursed),
           },
           {
             'metric': 'Total Paid',
-            'value': 'Php ${totalPaid.toStringAsFixed(2)}',
+            'value': ExportService.currencyFormat.format(totalPaid),
           },
           {
             'metric': 'Outstanding Balance',
-            'value': 'Php ${outstanding.toStringAsFixed(2)}',
+            'value': ExportService.currencyFormat.format(outstanding),
           },
           {
             'metric': 'Overdue Amount',
-            'value': 'Php ${totalOverdue.toStringAsFixed(2)}',
+            'value': ExportService.currencyFormat.format(totalOverdue),
           },
         ];
       });
@@ -648,8 +648,8 @@ class _EncoderReportsState extends State<EncoderReports> {
                     DataCell(Text("${loan["loanType"] ?? "-"}")),
                     DataCell(Text("${loan["startDate"] ?? "-"}")),
                     DataCell(Text("${loan["dueDate"] ?? "-"}")),
-                    DataCell(Text("Php ${loan["principalAmt"] ?? "0"}")),
-                    DataCell(Text("Php ${loan["remainBal"] ?? "0"}")),
+                    DataCell(Text(ExportService.safeCurrency(loan["principalAmt"]))),
+                    DataCell(Text(ExportService.safeCurrency(loan["remainBal"]))),
                     ]);
                   }).toList(),
                 ),
@@ -700,8 +700,8 @@ class _EncoderReportsState extends State<EncoderReports> {
                       DataCell(Text("${loan["loanType"] ?? "-"}")),
                       DataCell(Text("${loan["dueDate"] ?? "-"}")),
                       DataCell(Text("${loan["daysOverdue"] ?? "0"}")),
-                      DataCell(Text("Php ${loan["amountDue"] ?? "0"}")),
-                      DataCell(Text("Php ${loan["lateFees"] ?? "0"}")),
+                      DataCell(Text(ExportService.safeCurrency(loan["amountDue"]))),
+                      DataCell(Text(ExportService.safeCurrency(loan["lateFees"]))),
                       DataCell(Text("${loan["contactNo"] ?? "-"}")),
                     ]);
                   }).toList(),
@@ -751,9 +751,9 @@ class _EncoderReportsState extends State<EncoderReports> {
                       DataCell(Text("${loan["memName"] ?? "-"}")),
                       DataCell(Text("${loan["memID"] ?? "-"}")),
                       DataCell(Text("${loan["totalLoans"] ?? "0"}")),
-                      DataCell(Text("Php ${loan["totalBorrowed"] ?? "0"}")),
-                      DataCell(Text("Php ${loan["totalPaid"] ?? "0"}")),
-                      DataCell(Text("Php ${loan["outBal"] ?? "0"}")),
+                      DataCell(Text(ExportService.safeCurrency(loan["totalBorrowed"]))),
+                      DataCell(Text(ExportService.safeCurrency(loan["totalPaid"]))),
+                      DataCell(Text(ExportService.safeCurrency(loan["outBal"]))),
                       DataCell(Text("${loan["lastPaid"] ?? "-"}")),
                       DataCell(Text("${loan["loanStatus"] ?? "-"}")),
                     ]);
@@ -807,7 +807,7 @@ class _EncoderReportsState extends State<EncoderReports> {
                       DataCell(Text("${loan["loanID"] ?? "-"}")),
                       DataCell(Text("${loan["payDate"] ?? "-"}")),
                       DataCell(Text("${loan["payMethod"] ?? "-"}")),
-                      DataCell(Text("Php ${loan["amountPaid"] ?? "0"}")),
+                      DataCell(Text(ExportService.safeCurrency(loan["amountPaid"]))),
                       DataCell(Text("${loan["collectedBy"] ?? "-"}")),
                     ]);
                   }).toList(),
@@ -856,7 +856,7 @@ class _EncoderReportsState extends State<EncoderReports> {
                       DataCell(Text("${loan["loanID"] ?? "-"}")),
                       DataCell(Text("${loan["memName"] ?? "-"}")),
                       DataCell(Text("${loan["dueDate"] ?? "-"}")),
-                      DataCell(Text("Php ${loan["amountDue"] ?? "0"}")),
+                      DataCell(Text(ExportService.safeCurrency(loan["amountDue"]))),
                       DataCell(Text("${loan["daysMissed"] ?? "0"}")),
                       DataCell(Text("${loan["contactNo"] ?? "-"}")),
                       DataCell(Text("${loan["nextPayDate"] ?? "-"}")),
@@ -906,7 +906,7 @@ class _EncoderReportsState extends State<EncoderReports> {
                       DataCell(Text("${loan["voucherID"] ?? "-"}")),
                       DataCell(Text("${loan["dateIssued"] ?? "-"}")),
                       DataCell(Text("${loan["desc"] ?? "-"}")),
-                      DataCell(Text("Php ${loan["amtEarned"] ?? "0"}")),
+                      DataCell(Text(ExportService.safeCurrency(loan["amtEarned"]))),
                       DataCell(Text("${loan["revType"] ?? "-"}")),
                       DataCell(Text("${loan["recordedBy"] ?? "-"}")),
                     ]);

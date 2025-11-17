@@ -140,7 +140,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -174,7 +174,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -222,7 +222,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                 child: NumberInputField(
                   label: "Amount Paid",
                   controller: amountPaidController,
-                  hint: "Php 0"
+                  hint: ExportService.currencyFormat.format(0),
                 ),
               ),              
               SizedBox(width: 16),
@@ -596,7 +596,7 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
         _showError("Please enter a valid amount");
         return;
       }
-  debugPrint('[MemberPayment] Payment amount: Php $amount');
+  debugPrint('[MemberPayment] Payment amount: ${ExportService.safeCurrency(amount)}');
 
       // Method-specific validation
       if (selectedPaymentMethod == 'Cash') {

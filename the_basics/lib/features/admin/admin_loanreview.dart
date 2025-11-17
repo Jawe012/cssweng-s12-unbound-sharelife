@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/export_service.dart';
 import 'dart:async';
 
 class LoanReviewPage extends StatefulWidget {
@@ -226,7 +227,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
 
   DataRow _buildRow(Map<String, dynamic> loan) {
     final applicant = "${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}";
-  final amount = 'Php ${loan['loan_amount'] ?? 0}';
+  final amount = ExportService.safeCurrency(loan['loan_amount']);
     final type = loan['reason'] ?? 'N/A';
     final date = formatDate(loan['created_at']);
 

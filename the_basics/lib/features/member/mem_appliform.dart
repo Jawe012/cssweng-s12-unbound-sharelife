@@ -413,7 +413,7 @@ class _MemAppliformState extends State<MemAppliform> {
                 child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
-                hint: "Php 0",
+                hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Required';
@@ -430,7 +430,7 @@ class _MemAppliformState extends State<MemAppliform> {
               child: NumberInputField(
                 label: "Annual Income",
                 controller: anlIncController,
-                hint: "Php 0",
+                hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Required';
