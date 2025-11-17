@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// removed email/edge-function usage — notifications are driven by the app
 
 class AdminPaymentReviewDetails extends StatefulWidget {
   const AdminPaymentReviewDetails({super.key});
@@ -234,21 +233,10 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
           debugPrint('Error applying validated payment to loan: $e');
         }
 
-        // Notify member about payment status (edge function)
-        try {
-          await _notifyPaymentStatus(paymentId, newStatus);
-          // mark payment notification flag so notifications persist server-side
-          try {
-            await Supabase.instance.client
-                .from('payments')
-                .update({'notification_sent': true})
-                .eq('payment_id', paymentId);
-          } catch (e) {
-            debugPrint('Failed to set payments.notification_sent: $e');
-          }
-        } catch (e) {
-          debugPrint('Error calling payment notification function: $e');
-        }
+        // Notifications will be surfaced by the app's notification system
+        // (the NotificationsListPage reads the payments/approved_loans tables
+        // and will show the appropriate 'payment_valid' notification when
+        // the payment record status is set to 'Validated').
       }
 
       // Show success dialog (guard context after async work)
@@ -310,24 +298,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
     );
   }
 
-  // Helper to call edge function to notify member about payment status
-  Future<void> _notifyPaymentStatus(int paymentId, String status) async {
-    final url = Uri.parse('https://thgmovkioubrizajsvze.supabase.co/functions/v1/send-payment-status-email');
-    try {
-      final resp = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'payment_id': paymentId, 'status': status}),
-      );
-      if (resp.statusCode != 200) {
-        debugPrint('[notifyPaymentStatus] Function responded ${resp.statusCode}: ${resp.body}');
-      } else {
-        debugPrint('[notifyPaymentStatus] Payment notification sent for payment $paymentId');
-      }
-    } catch (e) {
-      debugPrint('[notifyPaymentStatus] Error calling edge function: $e');
-    }
-  }
+  // Notifications are handled by the app's notification system; no edge call.
 
   Widget paymentInfo() {
     return Column(
