@@ -443,7 +443,7 @@ class ExportService {
     return Uint8List.fromList(fileBytes!);
   }
 
-  /// Basic CSV export fallback (widely supported by Excel)
+  /// csv export fallback
   static Future<Uint8List> buildCsv({
     required List<Map<String, dynamic>> rows,
     List<String>? columnOrder,
@@ -560,8 +560,7 @@ class ExportService {
       );
       showExportMessage(context, 'Excel file saved to: $filePath');
     } catch (e) {
-      // If XLSX export fails (some platforms or package issues), fall back to CSV which
-      // can be opened by Excel. Provide a clear message to the user.
+      // If XLSX export fails, fall back to CSV (opens in excel).
       try {
         final csvBytes = await buildCsv(rows: rows, columnOrder: columnOrder, columnHeaders: columnHeaders);
         // Use .csv extension for fallback file
