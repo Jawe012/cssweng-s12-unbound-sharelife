@@ -11,7 +11,6 @@ class NotificationViewPage extends StatelessWidget {
     final body = notif["body"] as String? ?? "";
     final date = notif["date"] as String? ?? "";
     final notifType = notif["type"] as String? ?? "unknown";
-    final status = notif["status"] as String? ?? "unread";
     final loanRef = notif["loanRef"] as String? ?? "N/A";
 
     // Determine notification color and icon based on type
@@ -419,6 +418,10 @@ class NotificationViewPage extends StatelessWidget {
         return (Colors.blue[50]!, Colors.blue[700]!, Icons.payment);
       case 'payment_invalid':
         return (Colors.orange[50]!, Colors.orange[700]!, Icons.warning);
+      case 'missed_payment':
+        return (Colors.orange[50]!, Colors.deepOrange, Icons.report_problem);
+      case 'loan_overdue':
+        return (Colors.red[50]!, Colors.red[700]!, Icons.error);
       default:
         return (Colors.blue[50]!, Colors.blue[700]!, Icons.notifications);
     }
@@ -434,6 +437,10 @@ class NotificationViewPage extends StatelessWidget {
         return Colors.blue;
       case 'payment_invalid':
         return Colors.orange;
+      case 'missed_payment':
+        return Colors.orange;
+      case 'loan_overdue':
+        return Colors.red;
       default:
         return Colors.blue;
     }
@@ -449,6 +456,10 @@ class NotificationViewPage extends StatelessWidget {
         return 'CONFIRMED';
       case 'payment_invalid':
         return 'VERIFICATION ISSUE';
+      case 'missed_payment':
+        return 'MISSED PAYMENT';
+      case 'loan_overdue':
+        return 'OVERDUE';
       default:
         return 'NEW';
     }
@@ -465,6 +476,10 @@ class NotificationViewPage extends StatelessWidget {
         return 'Subject: Payment Confirmation - [$reference]';
       case 'payment_invalid':
         return 'Subject: Payment Verification Issue - [$reference]';
+      case 'missed_payment':
+        return 'Subject: Missed Payment Notice - [$reference]';
+      case 'loan_overdue':
+        return 'Subject: Overdue Loan Notice - [$reference]';
       default:
         return 'Subject: Notification';
     }

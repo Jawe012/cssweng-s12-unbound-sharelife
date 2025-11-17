@@ -106,15 +106,19 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
         });
       } else {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Loan application not found'))
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Loan application not found'))
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading loan details: $e'))
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading loan details: $e'))
+        );
+      }
     }
     
   }
@@ -129,7 +133,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       int? loanId;
 
       // Debug log the raw args for troubleshooting
-      print('[LoanDetails] route args: $args (${args.runtimeType})');
+      debugPrint('[LoanDetails] route args: $args (${args.runtimeType})');
 
       // Accept either an int id or a Map (loan) with application_id
       if (args is int) {
@@ -137,12 +141,12 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
       } else if (args is Map) {
         // Try several common key names for id
         final candidate = args['application_id'] ?? args['id'] ?? args['applicationId'] ?? args['loan_id'];
-        print('[LoanDetails] candidate id value: $candidate (${candidate.runtimeType})');
+        debugPrint('[LoanDetails] candidate id value: $candidate (${candidate.runtimeType})');
         loanId = _parseIntCandidate(candidate);
       }
 
       if (loanId != null) {
-        print('[LoanDetails] resolved loanId: $loanId');
+        debugPrint('[LoanDetails] resolved loanId: $loanId');
         fetchLoanDetails(loanId);
       } else {
         // No valid id provided — stop loading and show a friendly message
@@ -221,6 +225,19 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
               .from('approved_loans')
               .insert(approvedLoanPayload);
 
+          // Mark member as having an active loan
+          try {
+            final memberId = loanRecord['member_id'];
+            if (memberId != null) {
+              await Supabase.instance.client
+                  .from('members')
+                  .update({'has_loan': true})
+                  .eq('id', memberId);
+            }
+          } catch (e) {
+            debugPrint('[LoanApproval] Failed to set member.has_loan: $e');
+          }
+
           // 4. Delete the original record from loan_application
           await Supabase.instance.client
               .from('loan_application')
@@ -230,9 +247,11 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           // 5. Notify via edge function (pass the loanId for the email notification)
           await _notifyLoanStatus(loanId);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Loan approved and moved to approved_loans."))
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Loan approved and moved to approved_loans."))
+            );
+          }
 
         } else if (status == 'Rejected') {
           // REJECTION FLOW
@@ -251,16 +270,20 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           // Notify via edge function about rejection
           await _notifyLoanStatus(loanId);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Loan rejected successfully."))
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Loan rejected successfully."))
+            );
+          }
         }
 
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to update status: $e"))
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update status: $e"))
+        );
+      }
     }
   }
 

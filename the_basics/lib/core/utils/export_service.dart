@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
+import 'export_file_share_io.dart' if (dart.library.html) 'export_file_share_web.dart' as file_share;
 
 class ExportService {
   // Currency formatter
@@ -440,6 +443,42 @@ class ExportService {
     return Uint8List.fromList(fileBytes!);
   }
 
+  /// Basic CSV export fallback (widely supported by Excel)
+  static Future<Uint8List> buildCsv({
+    required List<Map<String, dynamic>> rows,
+    List<String>? columnOrder,
+    Map<String, String>? columnHeaders,
+    String delimiter = ',',
+  }) async {
+    final buffer = StringBuffer();
+
+    if (rows.isEmpty) {
+      buffer.writeln('No data');
+      return Uint8List.fromList(utf8.encode(buffer.toString()));
+    }
+
+    final headers = columnOrder ?? rows.first.keys.toList();
+    final displayHeaders = headers.map((h) => columnHeaders?[h] ?? h).toList();
+
+    // header row
+    buffer.writeln(displayHeaders.map((h) => '"${h.toString().replaceAll('"', '""')}"').join(delimiter));
+
+    // data rows
+    for (final row in rows) {
+      final cells = headers.map((h) {
+        final value = row[h];
+        final cell = value == null
+            ? ''
+            : (value is DateTime ? dateFormat.format(value) : value.toString());
+        // Escape double quotes
+        return '"${cell.replaceAll('"', '""')}"';
+      }).join(delimiter);
+      buffer.writeln(cells);
+    }
+
+    return Uint8List.fromList(utf8.encode(buffer.toString()));
+  }
+
   /// Save bytes to file (helper for downloads)
   static Future<File> saveFile(Uint8List bytes, String filename) async {
     final dir = Directory.systemTemp;
@@ -456,9 +495,10 @@ class ExportService {
   /// Share Excel file (saves to temp directory and returns path)
   static Future<String> shareExcel(Uint8List bytes, {String filename = 'document.xlsx'}) async {
     try {
-      // Save to temp directory
-      final file = await saveFile(bytes, filename);
-      return file.path;
+      // Use platform-specific saver: on web this triggers a browser download,
+      // on IO platforms this saves to a temp file and returns the path.
+      final result = await file_share.saveBytesToFile(bytes, filename);
+      return result;
     } catch (e) {
       throw Exception('Failed to save Excel file: $e');
     }
@@ -520,7 +560,19 @@ class ExportService {
       );
       showExportMessage(context, 'Excel file saved to: $filePath');
     } catch (e) {
-      showExportMessage(context, 'Export failed: $e');
+      // If XLSX export fails (some platforms or package issues), fall back to CSV which
+      // can be opened by Excel. Provide a clear message to the user.
+      try {
+        final csvBytes = await buildCsv(rows: rows, columnOrder: columnOrder, columnHeaders: columnHeaders);
+        // Use .csv extension for fallback file
+        final fallbackName = (filename != null && filename.contains('.'))
+            ? filename.replaceAll(RegExp(r'\.[^\.]+$'), '.csv')
+            : 'export_${DateTime.now().millisecondsSinceEpoch}.csv';
+        final filePath = await shareExcel(csvBytes, filename: fallbackName);
+        showExportMessage(context, 'XLSX export failed, saved CSV instead: $filePath');
+      } catch (inner) {
+        showExportMessage(context, 'Export failed: $e');
+      }
     }
   }
 }

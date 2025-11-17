@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class AdminPaymentReviewDetails extends StatefulWidget {
   const AdminPaymentReviewDetails({super.key});
@@ -89,7 +91,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
       if (response != null) {
         // Fetch staff name if staff_id exists
         String? fetchedStaffName;
-        if (response['staff_id'] != null) {
+          if (response['staff_id'] != null) {
           try {
             final staffResp = await Supabase.instance.client
                 .from('staff')
@@ -101,7 +103,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
               fetchedStaffName = "${staffResp['first_name']} ${staffResp['last_name']}";
             }
           } catch (e) {
-            print('Error fetching staff: $e');
+            debugPrint('Error fetching staff: $e');
           }
         }
 
@@ -184,7 +186,73 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
 
       if (!mounted) return;
 
-      // Show success dialog
+      // If payment was validated, apply it to the approved loan balance
+      if (newStatus == 'Validated') {
+        try {
+          // Fetch the current loan record
+          final loanResp = await Supabase.instance.client
+              .from('approved_loans')
+              .select('application_id, loan_amount, amount_paid, outstanding_balance, member_id')
+              .eq('application_id', loanId)
+              .maybeSingle();
+
+          if (loanResp != null) {
+            // Parse numeric values safely
+            final currentPaid = (loanResp['amount_paid'] ?? 0) as num;
+            final loanAmount = (loanResp['loan_amount'] ?? 0) as num;
+            final paymentAmount = amount as num;
+            final newAmountPaid = currentPaid + paymentAmount;
+            final newOutstanding = (loanAmount - newAmountPaid).toDouble();
+
+            final Map<String, dynamic> updates = {
+              'amount_paid': newAmountPaid,
+              'outstanding_balance': newOutstanding,
+            };
+
+            // If fully paid or negative outstanding, mark as Paid
+            if (newOutstanding <= 0) {
+              updates['status'] = 'Paid';
+            }
+
+            await Supabase.instance.client
+                .from('approved_loans')
+                .update(updates)
+                .eq('application_id', loanId);
+
+            // If loan now Paid, clear member.has_loan
+            if (newOutstanding <= 0) {
+              final memberId = loanResp['member_id'];
+              if (memberId != null) {
+                await Supabase.instance.client
+                    .from('members')
+                    .update({'has_loan': false})
+                    .eq('id', memberId);
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error applying validated payment to loan: $e');
+        }
+
+        // Notify member about payment status (edge function)
+        try {
+          await _notifyPaymentStatus(paymentId, newStatus);
+          // mark payment notification flag so notifications persist server-side
+          try {
+            await Supabase.instance.client
+                .from('payments')
+                .update({'notification_sent': true})
+                .eq('payment_id', paymentId);
+          } catch (e) {
+            debugPrint('Failed to set payments.notification_sent: $e');
+          }
+        } catch (e) {
+          debugPrint('Error calling payment notification function: $e');
+        }
+      }
+
+      // Show success dialog (guard context after async work)
+      if (!mounted) return;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -195,7 +263,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Return to list
+                if (mounted) Navigator.of(context).pop(); // Return to list
               },
               child: const Text('OK'),
             ),
@@ -240,6 +308,25 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
         ],
       ),
     );
+  }
+
+  // Helper to call edge function to notify member about payment status
+  Future<void> _notifyPaymentStatus(int paymentId, String status) async {
+    final url = Uri.parse('https://thgmovkioubrizajsvze.supabase.co/functions/v1/send-payment-status-email');
+    try {
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'payment_id': paymentId, 'status': status}),
+      );
+      if (resp.statusCode != 200) {
+        debugPrint('[notifyPaymentStatus] Function responded ${resp.statusCode}: ${resp.body}');
+      } else {
+        debugPrint('[notifyPaymentStatus] Payment notification sent for payment $paymentId');
+      }
+    } catch (e) {
+      debugPrint('[notifyPaymentStatus] Error calling edge function: $e');
+    }
   }
 
   Widget paymentInfo() {

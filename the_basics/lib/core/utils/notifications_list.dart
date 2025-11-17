@@ -118,7 +118,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
             });
           }
         } catch (e) {
-          print('Error fetching approved loans: $e');
+          debugPrint('Error fetching approved loans: $e');
         }
       }
 
@@ -150,7 +150,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
             });
           }
         } catch (e) {
-          print('Error fetching rejected loans: $e');
+          debugPrint('Error fetching rejected loans: $e');
         }
       }
 
@@ -182,7 +182,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
             });
           }
         } catch (e) {
-          print('Error fetching valid payments: $e');
+          debugPrint('Error fetching valid payments: $e');
         }
       }
 
@@ -215,7 +215,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
             });
           }
         } catch (e) {
-          print('Error fetching invalid payments: $e');
+          debugPrint('Error fetching invalid payments: $e');
         }
       } else if (userEmail != null) {
         // Fallback: query by email if memberId not found
@@ -268,7 +268,7 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
             });
           }
         } catch (e) {
-          print('Error fetching notifications by email: $e');
+          debugPrint('Error fetching notifications by email: $e');
         }
       }
 
@@ -279,12 +279,135 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
         return bTs.compareTo(aTs);
       });
 
+      // --- Overdue / Missed payment detection ---
+      try {
+        if (memberId != null) {
+            final activeLoans = await client
+              .from('approved_loans')
+              .select('application_id, created_at, installment, repayment_term, outstanding_balance, loan_amount, member_first_name, missed_notification_sent, overdue_notification_sent')
+              .eq('member_id', memberId)
+              .eq('status', 'active');
+
+          DateTime now = DateTime.now().toUtc();
+
+          Duration _parseDuration(String? s) {
+            if (s == null || s.isEmpty) return const Duration(days: 30);
+            final value = s.toLowerCase();
+            final numMatch = RegExp(r'(\d+)').firstMatch(value);
+            final intN = numMatch != null ? int.tryParse(numMatch.group(0) ?? '') ?? 1 : 1;
+
+            if (value.contains('year')) return Duration(days: 365 * intN);
+            if (value.contains('month')) return Duration(days: 30 * intN);
+            if (value.contains('week')) return Duration(days: 7 * intN);
+            if (value.contains('day')) return Duration(days: intN);
+            // fallback assume months
+            return Duration(days: 30 * intN);
+          }
+
+          for (final loan in activeLoans) {
+            final loanId = (loan['application_id'] as int?) ?? 0;
+            final rawCreated = loan['created_at'] ?? '';
+            final createdDt = _parseDateDynamic(rawCreated);
+            final installmentStr = (loan['installment'] ?? '1 month').toString();
+            final repaymentStr = (loan['repayment_term'] ?? '0 months').toString();
+            final outstanding = (loan['outstanding_balance'] ?? loan['loan_amount'] ?? 0).toString();
+            final firstName = loan['member_first_name'] ?? 'Member';
+
+            final installmentDur = _parseDuration(installmentStr);
+            final termDur = _parseDuration(repaymentStr);
+
+            // get last validated payment for this loan
+            List<dynamic> lastPaymentResp = [];
+            try {
+              lastPaymentResp = await client
+                  .from('payments')
+                  .select('payment_date, created_at, amount, status')
+                  .eq('approved_loan_id', loanId)
+                  .eq('status', 'Validated')
+                  .order('payment_date', ascending: false)
+                  .limit(1);
+            } catch (e) {
+              // ignore fetch errors for payments
+            }
+
+            DateTime lastPaid = createdDt;
+            if (lastPaymentResp.isNotEmpty) {
+              final p = lastPaymentResp[0];
+              lastPaid = _parseDateDynamic(p['payment_date'] ?? p['created_at'] ?? createdDt);
+            }
+
+            // Determine next due date
+            final nextDue = lastPaid.add(installmentDur);
+
+            // Consider a 7-day grace period for missed payment
+            final grace = const Duration(days: 7);
+            final missedFlag = (loan['missed_notification_sent'] ?? false) as bool;
+            if (now.isAfter(nextDue.add(grace)) && !missedFlag) {
+              final daysOverdue = now.difference(nextDue).inDays;
+              final loanRef = _formatLoanReference(loanId, createdDt);
+              notifsList.add({
+                "title": "Missed Payment",
+                "body": "Dear $firstName,\n\nIt appears that a scheduled payment for your loan [$loanRef] is overdue by $daysOverdue day(s). Your current outstanding balance is ₱$outstanding. Please make the payment as soon as possible or contact us to arrange a payment plan.",
+                "date": _formatDateTime(now.toLocal()),
+                "type": "missed_payment",
+                "status": "unread",
+                "_ts": now.millisecondsSinceEpoch.toString(),
+                "loanRef": loanRef,
+                "outstanding": outstanding,
+              });
+
+              // Persist the missed notification flag so it remains across sessions
+              try {
+                await client
+                    .from('approved_loans')
+                    .update({'missed_notification_sent': true})
+                    .eq('application_id', loanId);
+              } catch (e) {
+                debugPrint('Failed to persist missed_notification_sent for $loanId: $e');
+              }
+            }
+
+            // Check if loan repayment term has passed and still has outstanding balance
+            if (termDur.inDays > 0) {
+              final termEnd = createdDt.add(termDur);
+              final overdueFlag = (loan['overdue_notification_sent'] ?? false) as bool;
+              if (now.isAfter(termEnd) && (loan['outstanding_balance'] ?? 0) != 0 && !overdueFlag) {
+                final daysPast = now.difference(termEnd).inDays;
+                final loanRef = _formatLoanReference(loanId, createdDt);
+                notifsList.add({
+                  "title": "Overdue Loan",
+                  "body": "Dear $firstName,\n\nYour loan with reference [$loanRef] has passed its repayment term by $daysPast day(s) and still has an outstanding balance of ₱$outstanding. Please contact our office immediately to discuss settlement options.",
+                  "date": _formatDateTime(now.toLocal()),
+                  "type": "loan_overdue",
+                  "status": "unread",
+                  "_ts": now.millisecondsSinceEpoch.toString(),
+                  "loanRef": loanRef,
+                  "outstanding": outstanding,
+                });
+
+                // Persist the overdue notification flag so it remains across sessions
+                try {
+                  await client
+                      .from('approved_loans')
+                      .update({'overdue_notification_sent': true})
+                      .eq('application_id', loanId);
+                } catch (e) {
+                  debugPrint('Failed to persist overdue_notification_sent for $loanId: $e');
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error detecting overdue/missed payments: $e');
+      }
+
       setState(() {
         notifications = notifsList;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading notifications: $e');
+      debugPrint('Error loading notifications: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading notifications: $e'), backgroundColor: Colors.red),
       );
@@ -407,6 +530,14 @@ class _NotificationsListPageState extends State<NotificationsListPage> {
                                 case 'payment_invalid':
                                   leadingIcon = Icons.warning;
                                   leadingColor = Colors.orange;
+                                  break;
+                                case 'missed_payment':
+                                  leadingIcon = Icons.report_problem;
+                                  leadingColor = Colors.orange;
+                                  break;
+                                case 'loan_overdue':
+                                  leadingIcon = Icons.error;
+                                  leadingColor = Colors.red;
                                   break;
                                 default:
                                   leadingIcon = Icons.notifications;
