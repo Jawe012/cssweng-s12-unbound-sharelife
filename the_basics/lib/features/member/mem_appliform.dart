@@ -73,7 +73,7 @@ class LoanApplication {
       'comaker_spouse_last_name': spouseLastName,
       'comaker_child_first_name': childFirstName,
       'comaker_child_last_name': childLastName,
-      'comaker_group_name': groupName,
+      'group_affiliation': groupName,
       'member_email': memberEmail,
       'member_phone': memberPhone,
       'address': address,
@@ -386,11 +386,16 @@ class _MemAppliformState extends State<MemAppliform> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 16),
+
         SizedBox(
           width: 250,
           child: DateInputField(
-              label: "Date of Application",
-              controller: appliDateController,
+            label: "Date of Application",
+            controller: appliDateController,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              return null;
+            },
           ),
         ),
       ],
@@ -410,7 +415,7 @@ class _MemAppliformState extends State<MemAppliform> {
         Row(
           children: [
             Expanded(
-                child: NumberInputField(
+              child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
                 hint: ExportService.currencyFormat.format(0),
@@ -503,19 +508,18 @@ class _MemAppliformState extends State<MemAppliform> {
             SizedBox(width: 16),
             Expanded(
               child: TextInputField(
-              label: "Reason", 
-              controller: reasonController,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Required';
-                }
-                return null;
-              },
+                label: "Reason",
+                controller: reasonController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  return null;
+                },
               ),
             ),
           ],
         ),
-
       ],
     );
   }
@@ -562,18 +566,35 @@ class _MemAppliformState extends State<MemAppliform> {
       ],
     ),
     SizedBox(height: 16),
-    SizedBox(
-      width: 250,
-      child: DateInputField(
-        label: "Birth Date",
-        controller: bDateController,
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Required';
-          }
-          return null;
-        },
-      ),
+    Row(
+      children: [
+        SizedBox(
+          width: 250,
+          child: DateInputField(
+            label: "Birth Date",
+            controller: bDateController,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: TextInputField(
+            label: "Group Name",
+            controller: groupController,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
     ),
       ],
     );
@@ -628,13 +649,7 @@ class _MemAppliformState extends State<MemAppliform> {
           ],
         ),
         SizedBox(height: 16),
-        SizedBox(
-          width: 250,
-          child: TextInputField(
-            label: "Group Name",
-            controller: groupController,
-          ),
-        ),
+        
       ],
     );
   }

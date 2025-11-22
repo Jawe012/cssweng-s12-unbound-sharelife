@@ -16,6 +16,9 @@ class EncAppliform extends StatefulWidget {
 
 class _EncAppliformState extends State<EncAppliform> {
 
+  // Form key for validation
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController appliDateController = TextEditingController();
   
   // loan info
@@ -428,6 +431,11 @@ class _EncAppliformState extends State<EncAppliform> {
 
   // submit handler: insert into temporary_loan_information
   Future<void> submitForm() async {
+    // Validate form fields first
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all required fields.')));
+      return;
+    }
     // require selected member
     if (selectedMemberId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select or create a member before submitting an application.')));
@@ -455,6 +463,13 @@ class _EncAppliformState extends State<EncAppliform> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to resolve staff id for current user. Ensure you are signed in as staff.')));
       return;
     }
+
+    // Validate consent like other forms
+    if (!agreeTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must agree to the terms before submitting.')));
+      return;
+    }
+
 
     // convert birthdate to ISO (YYYY-MM-DD) for DB date field
     String dobIso = '';
@@ -490,7 +505,7 @@ class _EncAppliformState extends State<EncAppliform> {
       'comaker_spouse_last_name': spouseLNameController.text,
       'comaker_child_first_name': childFNameController.text,
       'comaker_child_last_name': childLNameController.text,
-      'comaker_group_name': groupController.text,
+      'group_affiliation': groupController.text,
     };
 
     try {
@@ -532,8 +547,12 @@ class _EncAppliformState extends State<EncAppliform> {
         SizedBox(
           width: 250,
           child: DateInputField(
-              label: "Date of Application",
-              controller: appliDateController,
+            label: "Date of Application",
+            controller: appliDateController,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              return null;
+            },
           ),
         ),
       ],
@@ -553,10 +572,15 @@ class _EncAppliformState extends State<EncAppliform> {
         Row(
           children: [
             Expanded(
-                child: NumberInputField(
+              child: NumberInputField(
                 label: "Desired Loan Amount",
                 controller: loanAmtController,
                 hint: ExportService.currencyFormat.format(0),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (int.tryParse(value) == null) return 'Must be a number';
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -565,6 +589,11 @@ class _EncAppliformState extends State<EncAppliform> {
                 label: "Annual Income",
                 controller: anlIncController,
                 hint: ExportService.currencyFormat.format(0),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (int.tryParse(value) == null) return 'Must be a number';
+                  return null;
+                },
               ),
             ),
           ],
@@ -582,6 +611,10 @@ class _EncAppliformState extends State<EncAppliform> {
                   "6 months",
                   "12 months",
                 ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -593,6 +626,10 @@ class _EncAppliformState extends State<EncAppliform> {
                   "Monthly",
                   "Bimonthly",
                 ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  return null;
+                },
               ),
             ),
           ],
@@ -606,6 +643,10 @@ class _EncAppliformState extends State<EncAppliform> {
                 label: "Business Type",
                 controller: businessController,
                 hint: "e.g. Retail, Sari-sari store, etc.", 
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -613,6 +654,11 @@ class _EncAppliformState extends State<EncAppliform> {
               child: TextInputField(
               label: "Reason", 
               controller: reasonController
+              ,
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                return null;
+              }
               ),
             ),
           ],
@@ -639,6 +685,10 @@ class _EncAppliformState extends State<EncAppliform> {
             label: "First Name/s",
             controller: fNameController,
             hint: "e.g. Mark Anthony",
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              return null;
+            },
           ),
         ),
         SizedBox(width: 16),
@@ -647,17 +697,42 @@ class _EncAppliformState extends State<EncAppliform> {
             label: "Last Name",
             controller: lNameController,
             hint: "e.g. Garcia",
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              return null;
+            },
           ),
         ),
       ],
     ),
     SizedBox(height: 16),
-    SizedBox(
-      width: 250,
-      child: DateInputField(
-        label: "Birth Date",
-        controller: bDateController,
-      ),
+    Row(
+      children: [
+        SizedBox(
+          width: 250,
+          child: DateInputField(
+            label: "Birth Date",
+            controller: bDateController,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Required';
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: TextInputField(
+            label: "Group Name",
+            controller: groupController,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
     ),
       ],
     );
@@ -712,13 +787,7 @@ class _EncAppliformState extends State<EncAppliform> {
           ],
         ),
         SizedBox(height: 16),
-        SizedBox(
-          width: 250,
-          child: TextInputField(
-            label: "Group Name",
-            controller: groupController,
-          ),
-        ),
+        
       ],
     );
   }
@@ -739,6 +808,11 @@ class _EncAppliformState extends State<EncAppliform> {
                 label: "Email",
                 controller: emailController,
                 hint: "e.g. markanthony@email.com",
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (!value.contains('@')) return 'Invalid email';
+                  return null;
+                },
               ),
             ),
             SizedBox(width: 16),
@@ -747,15 +821,23 @@ class _EncAppliformState extends State<EncAppliform> {
                 label: "Phone Number",
                 controller: phoneNumController,
                 hint: "+63 912 345 6789",
-              ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Required';
+                    return null;
+                  },
+                ),
             ),
           ],
         ),
         SizedBox(height: 16),
         TextInputField(
-                label: "Home Address",
-                controller: addrController,
-                hint: "e.g. Malate, Manila, Philippines",
+          label: "Home Address",
+          controller: addrController,
+          hint: "e.g. Malate, Manila, Philippines",
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Required';
+            return null;
+          },
         ),
       ],
     );
@@ -859,63 +941,64 @@ class _EncAppliformState extends State<EncAppliform> {
                             ),
 
                             // form content
-                            child: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                            child: Form(
+                              key: _formKey,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
 
-                                  // Member Search
-                                  memberSearchSection(),
-                                  SizedBox(height: 12),
+                                    // Member Search
+                                    memberSearchSection(),
+                                    const SizedBox(height: 12),
 
-                                  // Date of Application
-                                  appliDate(),                                    
-                                  SizedBox(height: 40),
+                                    // Date of Application
+                                    appliDate(),
+                                    const SizedBox(height: 40),
 
-                                  // Loan Information
-                                  loanInfo(),
-                                  SizedBox(height: 40),
-                                  
-                                  // Personal Information
-                                  personalInfo(),
-                                  SizedBox(height: 40),
+                                    // Loan Information
+                                    loanInfo(),
+                                    const SizedBox(height: 40),
 
-                                  // Loan Co-maker
-                                  coMakers(),
-                                  SizedBox(height: 40),
+                                    // Personal Information
+                                    personalInfo(),
+                                    const SizedBox(height: 40),
 
-                                  // Contact Information
-                                  contactInfo(),
-                                  SizedBox(height: 40),
+                                    // Loan Co-maker
+                                    coMakers(),
+                                    const SizedBox(height: 40),
 
-                                  // Consent
-                                  consentForm(),
-                                  SizedBox(height: 18),
+                                    // Contact Information
+                                    contactInfo(),
+                                    const SizedBox(height: 40),
 
+                                    // Consent
+                                    consentForm(),
+                                    const SizedBox(height: 18),
 
-                                  // Submit button
-                                  Center( 
-                                    child: ElevatedButton.icon(
-                                      onPressed: submitForm,
-                                      
-                                      label: const Text(
-                                        "Submit Application",
-                                        style: TextStyle(color: Colors.white),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                                        backgroundColor: Colors.black,
-                                        minimumSize: const Size(100, 28),
+                                    // Submit button
+                                    Center(
+                                      child: ElevatedButton.icon(
+                                        onPressed: submitForm,
+                                        icon: const SizedBox.shrink(),
+                                        label: const Text(
+                                          "Submit Application",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                                          backgroundColor: Colors.black,
+                                          minimumSize: const Size(100, 28),
+                                        ),
                                       ),
                                     ),
-                                  )
 
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
 
-
-                            ),
+                          ),
                           ),
 
 

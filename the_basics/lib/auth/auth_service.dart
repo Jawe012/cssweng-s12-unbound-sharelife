@@ -160,44 +160,46 @@ class AuthService {
     required String dateOfBirth,
     required String contactNo,
   }) async {
+    // Validate password using central helper
+    final pwErr = validatePassword(password);
+    if (pwErr != null) {
+      debugPrint('[signUp] Password validation failed: $pwErr');
+      return Future.error(pwErr);
+    }
+    
+    // Password validated; proceed to save pending profile and sign up
+    debugPrint('[signUp] Saving pending profile for: $email');
+    await ProfileStorage.savePendingProfile({
+      'email': email.trim().toLowerCase(),
+      'username': username.trim(),
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'date_of_birth': dateOfBirth.trim(), // should already be ISO format (YYYY-MM-DD) from register.dart
+      'contact_no': contactNo.trim(),
+      'role': 'member', // mark as member so claim logic knows where to insert
+    });
+
     try {
-      // Check if user already exists
-      final exists = await checkUserExists(email, username: username);
-      if (exists) {
-    debugPrint('[staffSignUp] User already exists with that email/username: $email / $username');
-        return Future.error('User already exists with that email/username');
-      }
-
-      // Validate password using central helper
-      final pwErr = validatePassword(password);
-      if (pwErr != null) {
-        debugPrint('[signUp] Password validation failed: $pwErr');
-        return Future.error(pwErr);
-      }
-      
-      // Password validated; proceed to save pending profile and sign up
-      debugPrint('[signUp] Saving pending profile for: $email');
-      await ProfileStorage.savePendingProfile({
-        'email': email.trim().toLowerCase(),
-        'username': username.trim(),
-        'first_name': firstName.trim(),
-        'last_name': lastName.trim(),
-        'date_of_birth': dateOfBirth.trim(),
-        'contact_no': contactNo.trim(),
-        'role': 'member', // mark as member so claim logic knows where to insert
-      });
-
-      // Perform auth signup
+      // Perform auth signup with metadata
       debugPrint('[signUp] Calling Supabase signUp for: $email');
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
+        data: {
+          'username': username.trim(),
+          'first_name': firstName.trim(),
+          'last_name': lastName.trim(),
+          'date_of_birth': dateOfBirth.trim(),
+          'contact_no': contactNo.trim(),
+          'role': 'member',
+        },
+        emailRedirectTo: 'https://unbound-sharelife.vercel.app',
       );
       debugPrint('[signUp] Supabase signUp response: ${response.user?.id}, response: $response');
       return response;
     } catch (e) {
-      debugPrint('[staffSignUp] Error checking existing user: $e');
-      return Future.error('Error checking existing user: $e');
+      debugPrint('[signUp] Supabase signUp error: $e');
+      rethrow; // Let caller handle the actual error
     }
   }
 
@@ -262,128 +264,184 @@ class AuthService {
     required String contactNo,
     String role = 'encoder',
   }) async {
+    final pwErr = validatePassword(password);
+    if (pwErr != null) {
+      print('[staffSignUp] Password validation failed: $pwErr');
+      return Future.error(pwErr);
+    }
+
+    // Save staff profile data locally before signup (include role)
+    print('[staffSignUp] Saving pending staff profile for: $email, role: $role');
+    await ProfileStorage.savePendingProfile({
+      'email': email.trim().toLowerCase(),
+      'username': username.trim(),
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'date_of_birth': dateOfBirth.trim(), // should already be ISO format (YYYY-MM-DD) from staff_register.dart
+      'contact_no': contactNo.trim(),
+      'role': role.trim(), // important for claim step
+    });
 
     try {
-      // Check if user already exists
-      final exists = await checkUserExists(email, username: username);
-
-      if (exists) {
-        print('[staffSignUp] User already exists with that email/username: $email / $username');
-        return Future.error('User already exists with that email/username');
-      }
-
-      final pwErr = validatePassword(password);
-      if (pwErr != null) {
-        print('[staffSignUp] Password validation failed: $pwErr');
-        return Future.error(pwErr);
-      }
-
-      // Save staff profile data locally before signup (include role)
-        // Save staff profile data locally before signup (include role)
-        print('[staffSignUp] Saving pending staff profile for: $email, role: $role');
-        await ProfileStorage.savePendingProfile({
-          'email': email.trim().toLowerCase(),
+      // Use Supabase auth signUp with metadata
+      print('[staffSignUp] Calling Supabase signUp for: $email');
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
           'username': username.trim(),
           'first_name': firstName.trim(),
           'last_name': lastName.trim(),
           'date_of_birth': dateOfBirth.trim(),
           'contact_no': contactNo.trim(),
-          'role': role.trim(), // important for claim step
-        });
+          'role': role.trim(),
+        },
+        emailRedirectTo: 'https://unbound-sharelife.vercel.app',
+      );
 
-        // Use Supabase auth signUp (same as member flow)
-        print('[staffSignUp] Calling Supabase signUp for: $email');
-        final response = await _supabase.auth.signUp(
-          email: email,
-          password: password,
-        );
-
-        print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
-        return response;
-
+      print('[staffSignUp] Supabase signUp response: ${response.user?.id}, response: $response');
+      return response;
     } catch (e) {
-      print('[staffSignUp] Error checking existing user: $e');
-      return Future.error('Error checking existing user: $e');
+      print('[staffSignUp] Supabase signUp error: $e');
+      rethrow; // Let caller handle the actual error
     }
   }
 
   // Claim pending profile after authentication
-  Future<void> tryClaimPendingProfile({int maxRetries = 3}) async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) {
-      print('[tryClaimPendingProfile] No current user, aborting.');
-      return;
-    }
+  /// Try to claim a pending profile that was saved locally at signup.
+  /// If no pending profile exists, attempt to create a minimal members row from auth user data.
+  ///
+  /// If [eventUser] is provided (from the onAuthStateChange payload) it will
+  /// be preferred to avoid races while the client restores the session.
+  Future<void> tryClaimPendingProfile({int maxRetries = 3, User? eventUser}) async {
+    const retryDelayMs = 300;
+    int attempt = 0;
 
-    final pending = await ProfileStorage.getPendingProfile();
-    if (pending == null) {
-      print('[tryClaimPendingProfile] No pending profile found, aborting.');
-      return;
-    }
+    while (attempt < maxRetries) {
+      attempt++;
 
-    final role = (pending['role'] ?? 'member').toString().toLowerCase();
-    print('[tryClaimPendingProfile] Pending profile: $pending, role: $role');
+      // Prefer the event user when provided to avoid currentUser timing issues
+      final user = eventUser ?? _supabase.auth.currentUser;
+      if (user == null) {
+        print('[tryClaimPendingProfile] No current user (attempt $attempt).');
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(milliseconds: retryDelayMs));
+          continue;
+        }
+        print('[tryClaimPendingProfile] aborting — no user after retries');
+        return;
+      }
 
-    // Build common row; will adjust per table below
-    final row = <String, dynamic>{
-      'email_address': pending['email'] ?? user.email,
-      'username': pending['username'],
-      'first_name': pending['first_name'],
-      'last_name': pending['last_name'],
-      'contact_no': pending['contact_no'],
-      'date_of_birth': pending['date_of_birth'],
-    };
+      print('[tryClaimPendingProfile] User authenticated: ${user.id}, email: ${user.email}');
 
-    // Remove empty/null date_of_birth to avoid DB errors (calling code may require non-null)
-    if (row['date_of_birth'] == null || (row['date_of_birth'] as String).isEmpty) {
-      row.remove('date_of_birth');
-    }
+      final pending = await ProfileStorage.getPendingProfile();
+      print('[tryClaimPendingProfile] Pending profile from storage: $pending');
 
-    // If staff, ensure role present in row (staff table requires role)
-    if (role == 'encoder') {
-      row['role'] = pending['role'] ?? 'encoder';
-    }
+      // Check if user already exists in members/staff tables
+      final existsInDb = await checkUserExists(user.email ?? '', username: null);
+      print('[tryClaimPendingProfile] User exists in DB: $existsInDb');
 
-    final targetTable = role == 'encoder' ? 'staff' : 'members';
-    print('[tryClaimPendingProfile] Target table: $targetTable, row: $row');
+      if (existsInDb && pending == null) {
+        print('[tryClaimPendingProfile] User already in DB and no pending profile. Nothing to do.');
+        return;
+      }
 
-    for (var attempt = 0; attempt < maxRetries; attempt++) {
+      // Build row from pending profile OR minimal data from auth user
+      Map<String, dynamic> row;
+      String targetTable;
+
+      if (pending != null) {
+        // Use pending profile data
+        final role = (pending['role'] ?? 'member').toString().toLowerCase();
+        print('[tryClaimPendingProfile] Using pending profile data, role: $role (attempt $attempt)');
+
+        row = {
+          'user_id': user.id,
+          'email_address': pending['email'] ?? user.email,
+          'username': pending['username'],
+          'first_name': pending['first_name'],
+          'last_name': pending['last_name'],
+          'contact_no': pending['contact_no'],
+        };
+
+        // Handle date_of_birth
+        final dobRaw = pending['date_of_birth'];
+        if (dobRaw != null && dobRaw.isNotEmpty) {
+          try {
+            if (dobRaw.contains('T') || RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dobRaw)) {
+              row['date_of_birth'] = dobRaw;
+            } else {
+              final parsed = DateTime.parse(dobRaw);
+              row['date_of_birth'] = parsed.toIso8601String().split('T')[0];
+            }
+          } catch (e) {
+            print('[tryClaimPendingProfile] Invalid date_of_birth: $dobRaw, omitting. Error: $e');
+          }
+        }
+
+        if (role == 'encoder') {
+          row['role'] = pending['role'] ?? 'encoder';
+        }
+
+        targetTable = role == 'encoder' ? 'staff' : 'members';
+      } else {
+        // No pending profile — create minimal member row from auth.user
+        print('[tryClaimPendingProfile] No pending profile. Creating minimal members row from auth user.');
+        
+        // Extract username from email (before @) as fallback
+        final emailUsername = user.email?.split('@')[0] ?? 'user_${user.id.substring(0, 8)}';
+        
+        row = {
+          'user_id': user.id,
+          'email_address': user.email,
+          'username': emailUsername, // fallback username
+          'first_name': user.userMetadata?['first_name'] ?? 'User',
+          'last_name': user.userMetadata?['last_name'] ?? 'Member',
+          'contact_no': user.userMetadata?['contact_no'] ?? user.phone ?? '0000000000',
+        };
+        
+        // Try to get DOB from metadata
+        final metaDob = user.userMetadata?['date_of_birth'];
+        if (metaDob != null && metaDob.toString().isNotEmpty) {
+          try {
+            row['date_of_birth'] = metaDob.toString();
+          } catch (e) {
+            print('[tryClaimPendingProfile] Could not use metadata DOB: $e');
+          }
+        }
+
+        targetTable = 'members';
+      }
+
+      print('[tryClaimPendingProfile] Target table: $targetTable, row: $row (attempt $attempt)');
+
       try {
+        print('[tryClaimPendingProfile] Attempt $attempt to insert/update $targetTable for email: ${row['email_address']}');
 
-        print('[tryClaimPendingProfile] Attempt ${attempt + 1} to insert/update $targetTable for email: ${row['email_address']}');
-        // Use checkUserExists to determine if user already exists
-        final exists = await checkUserExists(row['email_address'] ?? '');
-
-        if (exists) {
+        if (existsInDb) {
           print('[tryClaimPendingProfile] Existing record found, updating...');
-          // Update existing record (by email)
-          await _supabase
-              .from(targetTable)
-              .update(row)
-              .eq('email_address', row['email_address']);
-          print('[tryClaimPendingProfile] Update successful.');
+          final res = await _supabase.from(targetTable).update(row).eq('email_address', row['email_address']);
+          print('[tryClaimPendingProfile] Update result: $res');
         } else {
           print('[tryClaimPendingProfile] No existing record, inserting new...');
-          // Insert new record
-          await _supabase.from(targetTable).insert(row);
-          print('[tryClaimPendingProfile] Insert successful.');
+          final res = await _supabase.from(targetTable).insert(row);
+          print('[tryClaimPendingProfile] Insert result: $res');
         }
 
-        // Success - clear pending profile
-        await ProfileStorage.clearPendingProfile();
-        print('[tryClaimPendingProfile] Cleared pending profile after successful insert/update.');
+        // Success - clear pending profile if it existed
+        if (pending != null) {
+          await ProfileStorage.clearPendingProfile();
+          print('[tryClaimPendingProfile] Cleared pending profile after successful insert/update.');
+        }
         return;
-
-      } catch (e) {
-        print('[tryClaimPendingProfile] Error on attempt ${attempt + 1}: $e');
-        if (attempt < maxRetries - 1) {
-          await Future.delayed(Duration(seconds: 1 << attempt));
-          continue;
-        } else {
+      } catch (e, st) {
+        print('[tryClaimPendingProfile] Error on attempt $attempt: $e\n$st');
+        if (attempt >= maxRetries) {
           print('[tryClaimPendingProfile] Max retries reached. Not clearing pending profile.');
-          // Don't clear pending profile on failure - admin/user can try again later
           return;
         }
+        await Future.delayed(Duration(milliseconds: retryDelayMs));
+        continue;
       }
     }
   }

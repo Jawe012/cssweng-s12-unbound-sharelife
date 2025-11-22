@@ -57,39 +57,37 @@ class _RegisterPageState extends State<RegisterPage> {
     final dateOfBirth = _dateOfBirthController.text.trim();
     final contactNo = _contactNumberController.text.trim();
 
-    // Basic required fields
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty || firstName.isEmpty || lastName.isEmpty || contactNo.isEmpty) {
+    // Basic required fields (including DOB)
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty || firstName.isEmpty || lastName.isEmpty || contactNo.isEmpty || dateOfBirth.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill in all required fields.")));
       return;
     }
 
-    // Parse and validate DOB if provided
+    // Parse and validate DOB (required)
     String dobIso = '';
-    if (dateOfBirth.isNotEmpty) {
-      try {
-        final parts = dateOfBirth.split('/');
-        if (parts.length != 3) throw FormatException('invalid');
-        final month = int.parse(parts[0]);
-        final day = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
-        final dt = DateTime(year, month, day);
-        final now = DateTime.now();
-        if (!(dt.year == year && dt.month == month && dt.day == day)) throw FormatException('invalid');
-        if (dt.isAfter(now)) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date of birth can't be in the future.")));
-          return;
-        }
-        int age = now.year - dt.year;
-        if (now.month < dt.month || (now.month == dt.month && now.day < dt.day)) age -= 1;
-        if (age < 18) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be at least 18 years old to register.')));
-          return;
-        }
-        dobIso = dt.toIso8601String().split('T')[0];
-      } catch (_) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+    try {
+      final parts = dateOfBirth.split('/');
+      if (parts.length != 3) throw FormatException('invalid');
+      final month = int.parse(parts[0]);
+      final day = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final dt = DateTime(year, month, day);
+      final now = DateTime.now();
+      if (!(dt.year == year && dt.month == month && dt.day == day)) throw FormatException('invalid');
+      if (dt.isAfter(now)) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date of birth can't be in the future.")));
         return;
       }
+      int age = now.year - dt.year;
+      if (now.month < dt.month || (now.month == dt.month && now.day < dt.day)) age -= 1;
+      if (age < 18) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be at least 18 years old to register.')));
+        return;
+      }
+      dobIso = dt.toIso8601String().split('T')[0];
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter date of birth in MM/DD/YYYY format.')));
+      return;
     }
 
     if (email.isNotEmpty && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {

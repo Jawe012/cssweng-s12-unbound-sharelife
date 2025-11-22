@@ -68,20 +68,19 @@ class _MainAppState extends State<MainApp> {
   debugPrint("<!> Auth event: $event"); // ← This should appear when you sign in
 
       if (event == AuthChangeEvent.signedIn) {
+  debugPrint("<!> Auth event: $event"); // ← This should appear when you sign in
   debugPrint("<✓> User signed in — checking pending profile...");
         final pending = await ProfileStorage.getPendingProfile();
   debugPrint("<⋯> Pending profile: $pending");
 
-        if (pending != null) { 
-            debugPrint('<◍> Claiming profile...');
-            await authService.tryClaimPendingProfile();
-        }
+        // ALWAYS try to claim/create profile (even if pending is null)
+        debugPrint('<◍> Attempting to claim/create profile...');
+        final eventUser = data.session?.user;
+        await authService.tryClaimPendingProfile(eventUser: eventUser);
 
         await _routeUserAfterLogin();
         if (!mounted) return; // guard against using context after async work
-      }
-
-        // Handle password recovery event: route user to reset-password page
+      }        // Handle password recovery event: route user to reset-password page
         if (event == AuthChangeEvent.passwordRecovery) {
           debugPrint("<±> Password recovery event detected — routing to reset page...");
           final context = navigatorKey.currentContext;
