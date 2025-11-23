@@ -40,22 +40,51 @@ class _LoginPageState extends State<LoginPage> {
 
   // login button pressed
   void login() async {
-    // prepare data
-    final email = _emailController.text;
-    final password = _passwordController.text;
+    final credential = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    // attempt login...
+    // If empty input, do nothing
+    if (credential.isEmpty || password.isEmpty) {
+      return;
+    }
+
     try {
-      await authService.signInWithEmailPassword(email, password);
+      await authService.signInWithEmailPassword(credential, password);
       // On success, persist or clear remembered email as chosen
       if (_rememberMe) {
-        await RememberMe.saveEmail(email);
+        await RememberMe.saveEmail(credential);
       } else {
         await RememberMe.clear();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      final errorMsg = e.toString().toLowerCase();
+      
+      // Check if it's a username login attempt that failed
+      final isUsername = !credential.contains('@');
+      
+      if (isUsername) {
+        // Username login failed - could be wrong credentials, non-existent user, or need email for first login
+        if (errorMsg.contains('invalid') || errorMsg.contains('credentials') || errorMsg.contains('password')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid credentials. Please check your username and password.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed. Please use your email for first-time login, or check if the username exists.')),
+          );
+        }
+      } else {
+        // Email login failed
+        if (errorMsg.contains('invalid') || errorMsg.contains('credentials') || errorMsg.contains('password')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid credentials. Please check your email and password.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login failed: $e')),
+          );
+        }
+      }
     }
   }
 

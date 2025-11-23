@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TopNavBar extends StatefulWidget {
   final String splash;
@@ -145,27 +146,12 @@ class SideMenuBtn extends StatelessWidget {
 }
 
 
-class  MenuOptions extends StatelessWidget{
+class MenuOptions extends StatelessWidget {
   const MenuOptions({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        TextButton(
-          onPressed: () {Navigator.pushReplacementNamed(context, '/admin-dash');}, 
-          child: Text('Resources', style: TextStyle(color: Color(0xFF0C0C0D))) // for relevant links
-        ),
-        TextButton(
-          onPressed: () {Navigator.pushReplacementNamed(context, '/encoder-dash');},
-          child: Text('Contact Us', style: TextStyle(color: Color(0xFF0C0C0D))) // for contact info
-        ),
-        TextButton(
-          onPressed: () {Navigator.pushReplacementNamed(context, '/member-dash');},
-          child: Text('Help', style: TextStyle(color: Color(0xFF0C0C0D))) // for troubleshooting
-        ),
-      ]
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -192,6 +178,46 @@ class _ProfileBtnState extends State<ProfileBtn> {
     await authService.signOut();
     //Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  // Get user initials from first and last name
+  Future<String> _getUserInitials() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return 'U';
+
+      // Try members table first
+      var userRecord = await Supabase.instance.client
+          .from('members')
+          .select('first_name, last_name')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      // If not in members, try staff
+      if (userRecord == null) {
+        final email = Supabase.instance.client.auth.currentUser?.email;
+        if (email != null) {
+          userRecord = await Supabase.instance.client
+              .from('staff')
+              .select('first_name, last_name')
+              .eq('email_address', email)
+              .maybeSingle();
+        }
+      }
+
+      if (userRecord != null) {
+        final firstName = (userRecord['first_name'] ?? '').toString();
+        final lastName = (userRecord['last_name'] ?? '').toString();
+        
+        final firstInitial = firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
+        final lastInitial = lastName.isNotEmpty ? lastName[0].toUpperCase() : '';
+        
+        return firstInitial + lastInitial;
+      }
+    } catch (e) {
+      debugPrint('Error fetching user initials: $e');
+    }
+    return 'U';
   }
 
   @override
@@ -226,13 +252,19 @@ class _ProfileBtnState extends State<ProfileBtn> {
           ),
         ),
       ],
-      child: const CircleAvatar(
-        radius: 20,
-        backgroundColor: Colors.grey,
-        child: Text(
-          "AB",
-          style: TextStyle(color: Color(0xFF0C0C0D), fontWeight: FontWeight.bold),
-        ),
+      child: FutureBuilder<String>(
+        future: _getUserInitials(),
+        builder: (context, snapshot) {
+          final initials = snapshot.data ?? 'U';
+          return CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.grey,
+            child: Text(
+              initials,
+              style: const TextStyle(color: Color(0xFF0C0C0D), fontWeight: FontWeight.bold),
+            ),
+          );
+        },
       ),
     );
   }

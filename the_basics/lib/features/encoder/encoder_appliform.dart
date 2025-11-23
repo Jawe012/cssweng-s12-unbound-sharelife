@@ -56,6 +56,32 @@ class _EncAppliformState extends State<EncAppliform> {
   String? selectedMemberName;
   String? staffSearchError;
 
+  // validation limits (adjust as needed)
+  static const int minLoanAmount = 1000;
+  static const int maxLoanAmount = 3000;
+  static const int minAnnualIncome = 0;
+  static const int maxAnnualIncome = 10000000;
+
+  final RegExp _emailRegExp = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  bool _isValidPhilippinePhone(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 11 && digits.startsWith('09')) return true;
+    if (digits.length == 12 && digits.startsWith('63')) return true; // +63 9XXXXXXXXX -> digits start with 63
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final year = now.year.toString();
+    appliDateController.text = "$month-$day-$year";
+  }
+
 
   Widget buttonsRow() {
     return Row(
@@ -367,7 +393,7 @@ class _EncAppliformState extends State<EncAppliform> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Existing member found'),
-        content: Text('Existing member: $fname $lname — ID#${id}\n$email\nPhone: $contact\nDOB: $dobPretty\n\nUse this record?'),
+        content: Text('Existing member: $fname $lname — ID#$id\n$email\nPhone: $contact\nDOB: $dobPretty\n\nUse this record?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Create new')),
@@ -424,7 +450,7 @@ class _EncAppliformState extends State<EncAppliform> {
         phoneNumController.text = result['contact_no'] ?? '';
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Member "${selectedMemberName}" created and selected.')),
+        SnackBar(content: Text('Member "$selectedMemberName" created and selected.')),
       );
     }
   }
@@ -468,6 +494,25 @@ class _EncAppliformState extends State<EncAppliform> {
     if (!agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must agree to the terms before submitting.')));
       return;
+    }
+
+    // Prevent duplicate pending applications for the same member
+    try {
+      final existing = await Supabase.instance.client
+          .from('loan_application')
+          .select('id,status')
+          .eq('member_id', selectedMemberId!)
+          .limit(1) as List<dynamic>;
+      if (existing.isNotEmpty) {
+        final rec = Map<String, dynamic>.from(existing.first as Map);
+        final status = rec['status'];
+        if (status == null || status.toString().toLowerCase() == 'pending') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('There is already a pending loan application for this member.')));
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking existing loan application: $e');
     }
 
 
@@ -549,10 +594,6 @@ class _EncAppliformState extends State<EncAppliform> {
           child: DateInputField(
             label: "Date of Application",
             controller: appliDateController,
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Required';
-              return null;
-            },
           ),
         ),
       ],
@@ -578,7 +619,10 @@ class _EncAppliformState extends State<EncAppliform> {
                 hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (int.tryParse(value) == null) return 'Must be a number';
+                  final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+                  if (n == null) return 'Must be a number';
+                  if (n < minLoanAmount) return 'Minimum loan is ₱$minLoanAmount';
+                  if (n > maxLoanAmount) return 'Maximum loan is ₱$maxLoanAmount';
                   return null;
                 },
               ),
@@ -591,7 +635,10 @@ class _EncAppliformState extends State<EncAppliform> {
                 hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (int.tryParse(value) == null) return 'Must be a number';
+                  final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+                  if (n == null) return 'Must be a number';
+                  if (n < minAnnualIncome) return 'Income must be at least $minAnnualIncome';
+                  if (n > maxAnnualIncome) return 'Income must be at most $maxAnnualIncome';
                   return null;
                 },
               ),
@@ -810,7 +857,7 @@ class _EncAppliformState extends State<EncAppliform> {
                 hint: "e.g. markanthony@email.com",
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
-                  if (!value.contains('@')) return 'Invalid email';
+                  if (!_emailRegExp.hasMatch(value.trim())) return 'Invalid email address';
                   return null;
                 },
               ),
@@ -823,6 +870,13 @@ class _EncAppliformState extends State<EncAppliform> {
                 hint: "+63 912 345 6789",
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
+                    if (!_isValidPhilippinePhone(value.trim())) {
+                      final digits = value.replaceAll(RegExp(r'\D'), '');
+                      if (digits.length != 11 && !(digits.length == 12 && digits.startsWith('63'))) {
+                        return 'Invalid contact number. Must be 11 digits starting with 09.';
+                      }
+                      return 'Contact number format is incorrect.';
+                    }
                     return null;
                   },
                 ),

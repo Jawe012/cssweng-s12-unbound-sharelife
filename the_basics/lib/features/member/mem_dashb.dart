@@ -41,7 +41,7 @@ class _MemDBState extends State<MemberDB> {
       // Get member info
       final memberResponse = await Supabase.instance.client
           .from('members')
-          .select('member_id')
+          .select('id')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -53,7 +53,7 @@ class _MemDBState extends State<MemberDB> {
         return;
       }
 
-      final memberId = memberResponse['member_id'];
+      final memberId = memberResponse['id'];
 
       // Fetch loans for this member
       final response = await Supabase.instance.client

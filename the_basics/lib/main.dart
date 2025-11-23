@@ -28,6 +28,8 @@ import 'package:the_basics/features/member/mem_payment_history.dart';
 import 'package:the_basics/auth/register.dart';
 import 'package:the_basics/auth/staff_register.dart';
 import 'package:the_basics/core/utils/profile_storage_io.dart';
+import 'package:the_basics/core/utils/session_manager.dart';
+import 'package:the_basics/core/widgets/inactivity_detector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/auth/auth_service.dart';
 
@@ -60,6 +62,45 @@ class _MainAppState extends State<MainApp> {
   void initState() {
     super.initState();
     _setupAuthListener();
+    // configure session manager for 15-minute timeout with 30s warning
+    SessionManager.instance.configure(
+      timeoutDuration: const Duration(minutes: 15),
+      warningDuration: const Duration(seconds: 30),
+    );
+
+    // attach UI-aware callbacks to show warning and perform sign-out
+    SessionManager.instance.onWarning = () async {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      final extend = await showDialog<bool>(
+        context: ctx,
+        barrierDismissible: false,
+        builder: (context) {
+          final remaining = SessionManager.instance.remaining ?? Duration.zero;
+          return AlertDialog(
+            title: const Text('Session Expiring'),
+            content: Text('Your session will expire in ${remaining.inSeconds} seconds. Extend session?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Logout')),
+              ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Stay signed in')),
+            ],
+          );
+        },
+      );
+
+      if (extend == true) {
+        SessionManager.instance.resetTimer();
+      } else {
+        await AuthService().signOut();
+        navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (r) => false);
+      }
+    };
+
+    SessionManager.instance.onTimeout = () async {
+      final ctx = navigatorKey.currentContext;
+      await AuthService().signOut();
+      if (ctx != null) navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (r) => false);
+    };
   }
 
   void _setupAuthListener() {
@@ -120,8 +161,9 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
+    return InactivityDetector(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
       initialRoute: '/login',
       routes: {
         '/home':(context) => MemberDB(),
@@ -157,6 +199,7 @@ class _MainAppState extends State<MainApp> {
         '/account-options': (context) => AccountSettings(),
         '/profile-page': (context) => ProfilePage(),
       },
+      ),
     );
   }
 }

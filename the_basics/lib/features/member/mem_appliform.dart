@@ -121,6 +121,32 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController addrController = TextEditingController();
   bool agreeTerms = false;
 
+  // validation limits
+  static const int minLoanAmount = 1000;
+  static const int maxLoanAmount = 3000;
+  static const int minAnnualIncome = 0;
+  static const int maxAnnualIncome = 10000000;
+
+  final RegExp _emailRegExp = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  bool _isValidPhilippinePhone(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 11 && digits.startsWith('09')) return true;
+    if (digits.length == 12 && digits.startsWith('63')) return true;
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    final year = now.year.toString();
+    appliDateController.text = "$month-$day-$year";
+  }
+
   Future<void> submitForm() async {
   // Validate form fields first
   if (!_formKey.currentState!.validate()) {
@@ -229,6 +255,25 @@ class _MemAppliformState extends State<MemAppliform> {
       SnackBar(content: Text("Provided name does not match member records.\nExpected: $dbFirstName $dbLastName (DOB: $formattedDbBirthDate)"))
     );
     return;
+  }
+
+  // Prevent duplicate pending applications for this member
+  try {
+    final existing = await Supabase.instance.client
+        .from('loan_application')
+        .select('id,status')
+        .eq('member_id', memberRecord['id'])
+        .limit(1) as List<dynamic>;
+    if (existing.isNotEmpty) {
+      final rec = Map<String, dynamic>.from(existing.first as Map);
+      final status = rec['status'];
+      if (status == null || status.toString().toLowerCase() == 'pending') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You already have a pending loan application.')));
+        return;
+      }
+    }
+  } catch (e) {
+    debugPrint('Error checking existing loan application: $e');
   }
 
   Future<void> submitToSupabase(LoanApplication application) async {
@@ -392,10 +437,6 @@ class _MemAppliformState extends State<MemAppliform> {
           child: DateInputField(
             label: "Date of Application",
             controller: appliDateController,
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Required';
-              return null;
-            },
           ),
         ),
       ],
@@ -420,12 +461,11 @@ class _MemAppliformState extends State<MemAppliform> {
                 controller: loanAmtController,
                 hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Must be a number';
-                  }
+                  if (value == null || value.isEmpty) return 'Required';
+                  final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+                  if (n == null) return 'Must be a number';
+                  if (n < minLoanAmount) return 'Minimum loan is ₱$minLoanAmount';
+                  if (n > maxLoanAmount) return 'Maximum loan is ₱$maxLoanAmount';
                   return null;
                 },
               ),
@@ -437,12 +477,11 @@ class _MemAppliformState extends State<MemAppliform> {
                 controller: anlIncController,
                 hint: ExportService.currencyFormat.format(0),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Must be a number';
-                  }
+                  if (value == null || value.isEmpty) return 'Required';
+                  final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+                  if (n == null) return 'Must be a number';
+                  if (n < minAnnualIncome) return 'Income must be at least $minAnnualIncome';
+                  if (n > maxAnnualIncome) return 'Income must be at most $maxAnnualIncome';
                   return null;
                 },
               ),
@@ -671,13 +710,8 @@ class _MemAppliformState extends State<MemAppliform> {
                 controller: emailController,
                 hint: "e.g. markanthony@email.com",
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  // Basic email validation
-                  if (!value.contains('@')) {
-                    return 'Invalid email';
-                  }
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (!_emailRegExp.hasMatch(value.trim())) return 'Invalid email address';
                   return null;
                 },
               ),
@@ -689,8 +723,13 @@ class _MemAppliformState extends State<MemAppliform> {
                 controller: phoneNumController,
                 hint: "+63 912 345 6789",
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (!_isValidPhilippinePhone(value.trim())) {
+                    final digits = value.replaceAll(RegExp(r'\D'), '');
+                    if (digits.length != 11 && !(digits.length == 12 && digits.startsWith('63'))) {
+                      return 'Invalid contact number. Must be 11 digits starting with 09.';
+                    }
+                    return 'Contact number format is incorrect.';
                   }
                   return null;
                 },

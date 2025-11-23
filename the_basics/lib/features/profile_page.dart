@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -25,6 +26,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final ImagePicker _picker = ImagePicker();
   bool _loading = true;
   bool _notSignedIn = false;
+  String? _profileImageUrl;
+  XFile? _pickedImage; // Store picked image for web compatibility
 
   // profile fields
   String _firstName = '';
@@ -41,8 +44,77 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null) {
-      setState(() => _imageFile = File(picked.path));
+      _pickedImage = picked;
+      if (!kIsWeb) {
+        setState(() => _imageFile = File(picked.path));
+      }
+      // Upload to Supabase storage
+      await _uploadProfileImage(picked);
     }
+  }
+
+  Future<void> _uploadProfileImage(XFile imageFile) async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        _showMessage('Not logged in');
+        return;
+      }
+
+      // Upload to Supabase storage bucket 'profile-images'
+      final fileName = '$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      // Read file as bytes (works on both web and mobile)
+      final bytes = await imageFile.readAsBytes();
+      
+      await Supabase.instance.client.storage
+          .from('profile-images')
+          .uploadBinary(fileName, bytes, fileOptions: const FileOptions(upsert: true));
+
+      // Get public URL
+      final imageUrl = Supabase.instance.client.storage
+          .from('profile-images')
+          .getPublicUrl(fileName);
+
+      // Update user profile with image URL
+      final email = Supabase.instance.client.auth.currentUser?.email;
+      if (email != null) {
+        // Try updating members table first
+        try {
+          await Supabase.instance.client
+              .from('members')
+              .update({'profile_image_url': imageUrl})
+              .eq('email_address', email);
+        } catch (e) {
+          // If not in members, try staff
+          await Supabase.instance.client
+              .from('staff')
+              .update({'profile_image_url': imageUrl})
+              .eq('email_address', email);
+        }
+      }
+
+      setState(() => _profileImageUrl = imageUrl);
+      _showMessage('Profile image updated successfully');
+    } catch (e) {
+      _showMessage('Error uploading image: $e');
+      debugPrint('Upload error: $e');
+    }
+  }
+
+  void _showMessage(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // Return user's initials for avatar fallback
+  String _getInitials() {
+    final fn = _firstName.trim();
+    final ln = _lastName.trim();
+    final fi = fn.isNotEmpty ? fn[0].toUpperCase() : '';
+    final li = ln.isNotEmpty ? ln[0].toUpperCase() : '';
+    final initials = (fi + li);
+    return initials.isNotEmpty ? initials : 'U';
   }
 
   Widget _profileHeading(String fname, String lname, String role) {
@@ -50,15 +122,27 @@ class _ProfilePageState extends State<ProfilePage> {
       mainAxisSize: MainAxisSize.min,
       children: [
 
-        GestureDetector(
-          onTap: _pickImage,
-          child: CircleAvatar(
-            radius: 100,
-            backgroundImage: _imageFile != null
-                ? FileImage(_imageFile!)
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+        // For future iterations of this project, change null -> "onTap: _pickImage" to allow changing one's profile picture
+        // It is currently disabled to prevent issues with the max storage limits on the Supabase free tier.
+        // To enable this feature, ensure that the 'profile-images' storage bucket exists, and set up the necessary policies for authenticated users
+          GestureDetector(
+            onTap: null, // disabled
+            child: (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) || (!kIsWeb && _imageFile != null)
+                ? CircleAvatar(
+                    radius: 100,
+                    backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                        ? NetworkImage(_profileImageUrl!)
+                        : FileImage(_imageFile!) as ImageProvider,
+                  )
+                : CircleAvatar(
+                    radius: 100,
+                    backgroundColor: const Color(0xFFb8b8b8), // light gray
+                    child: Text(
+                      _getInitials(),
+                      style: const TextStyle(color: Colors.black, fontSize: 40, fontWeight: FontWeight.bold),
+                    ),
+                  ),
           ),
-        ),
         SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,6 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _recogDate = 'N/A';
           _status = 'N/A';
           _loanStatus = 'N/A';
+          _profileImageUrl = pick(staffResp, ['profile_image_url']);
         });
         debugPrint('✅ Loaded staff profile: $_firstName $_lastName');
       } else {
@@ -257,6 +342,7 @@ class _ProfilePageState extends State<ProfilePage> {
             _dob = pick(memResp, ['date_of_birth', 'dob']);
             _recogDate = pick(memResp, ['recognition_date', 'recognitionDate']);
             _status = pick(memResp, ['status']) == '' ? 'active' : pick(memResp, ['status']);
+            _profileImageUrl = pick(memResp, ['profile_image_url']);
           });
           debugPrint('✅ Loaded member profile: $_firstName $_lastName');
 
@@ -266,23 +352,38 @@ class _ProfilePageState extends State<ProfilePage> {
             debugPrint('Member id not found on member record; skipping loan status fetch. memResp keys: ${memResp.keys.toList()}');
             setState(() => _loanStatus = 'No loan applications');
           } else {
-            // use memberIdRaw as-is (supabase can match strings or ints depending on column type)
+            // Check both loan_application (pending/rejected) and approved_loans (active) tables
             try {
               debugPrint('Fetching loan status for member_id = $memberIdRaw');
-              final loanResp = await supabase
-                  .from('loan_application')
+              
+              // First check approved_loans for active loans
+              final approvedResp = await supabase
+                  .from('approved_loans')
                   .select('status')
                   .eq('member_id', memberIdRaw)
                   .order('created_at', ascending: false)
                   .limit(1)
                   .maybeSingle();
-
-              debugPrint('loanResp: $loanResp');
-              final loanMap = asMap(loanResp);
-              if (loanMap != null && loanMap['status'] != null) {
-                setState(() => _loanStatus = loanMap['status'].toString());
+              
+              if (approvedResp != null && approvedResp['status'] != null) {
+                setState(() => _loanStatus = 'Active: ${approvedResp['status']}');
               } else {
-                setState(() => _loanStatus = 'No loan applications');
+                // Check loan_application for pending/rejected
+                final loanResp = await supabase
+                    .from('loan_application')
+                    .select('status')
+                    .eq('member_id', memberIdRaw)
+                    .order('created_at', ascending: false)
+                    .limit(1)
+                    .maybeSingle();
+
+                debugPrint('loanResp: $loanResp');
+                final loanMap = asMap(loanResp);
+                if (loanMap != null && loanMap['status'] != null) {
+                  setState(() => _loanStatus = loanMap['status'].toString());
+                } else {
+                  setState(() => _loanStatus = 'No loan applications');
+                }
               }
             } catch (e) {
               debugPrint('Error fetching loan status: $e');

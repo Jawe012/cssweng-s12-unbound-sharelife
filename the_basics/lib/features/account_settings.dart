@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/auth/auth_service.dart';
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({super.key});
@@ -11,12 +12,107 @@ class AccountSettings extends StatefulWidget {
 
 class _AccountSettingsState extends State<AccountSettings> {
   String _notifications = 'Email';
-  String _preference = 'Default';
-  String _timezone = 'UTC';
+  final String _preference = 'Default';
+  final String _timezone = 'UTC';
+  final authService = AuthService();
 
   void _showMessage(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _changePassword() async {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentPasswordController,
+              decoration: const InputDecoration(labelText: 'Current Password'),
+              obscureText: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newPasswordController,
+              decoration: const InputDecoration(labelText: 'New Password'),
+              obscureText: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmPasswordController,
+              decoration: const InputDecoration(labelText: 'Confirm New Password'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final currentPassword = currentPasswordController.text;
+      final newPassword = newPasswordController.text;
+      final confirmPassword = confirmPasswordController.text;
+
+      if (newPassword.isEmpty || confirmPassword.isEmpty) {
+        _showMessage('Please enter both new password fields');
+        return;
+      }
+
+      if (newPassword != confirmPassword) {
+        _showMessage('New passwords do not match');
+        return;
+      }
+
+      // Validate password complexity
+      final validationError = authService.validatePassword(newPassword);
+      if (validationError != null) {
+        _showMessage(validationError);
+        return;
+      }
+
+      try {
+        // First verify current password by attempting to re-authenticate
+        final email = authService.getCurrentUserEmail();
+        if (email == null) {
+          _showMessage('Not logged in');
+          return;
+        }
+
+        try {
+          await authService.signInWithEmailPassword(email, currentPassword);
+        } catch (e) {
+          _showMessage('Current password is incorrect');
+          return;
+        }
+
+        // Update password
+        await authService.updatePassword(newPassword);
+        _showMessage('Password changed successfully');
+      } catch (e) {
+        _showMessage('Error changing password: $e');
+      }
+    }
+
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
   }
 
   Widget _sectionHeader(String title) {
@@ -44,7 +140,7 @@ class _AccountSettingsState extends State<AccountSettings> {
             // Security section
             _sectionHeader('Security'),
             ElevatedButton(
-              onPressed: () => _showMessage('Change Password pressed'),
+              onPressed: _changePassword,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white54, // Background color
                 foregroundColor: Colors.black, // Text color
@@ -53,28 +149,6 @@ class _AccountSettingsState extends State<AccountSettings> {
             ),
             const SizedBox(height: 24),
 
-            // Notifications section
-            _sectionHeader('Notifications'),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _notifications,
-                    items: const [
-                      DropdownMenuItem(value: 'Email', child: Text('Email')),
-                      DropdownMenuItem(value: 'None', child: Text('None')),
-                    ],
-                    onChanged: (v) => setState(() => _notifications = v ?? 'Email'),
-                    decoration: const InputDecoration(labelText: 'Preferred channel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () => _showMessage('Notifications saved ($_notifications)'),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
             const SizedBox(height: 40),
             // small footer action
             ElevatedButton.icon(
