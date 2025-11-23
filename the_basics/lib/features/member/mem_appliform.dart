@@ -27,6 +27,7 @@ class LoanApplication {
   final String? spouseLastName;
   final String? childFirstName;
   final String? childLastName;
+  final String? comakerContactNo;
   final String? groupName;
 
   //contact info
@@ -50,6 +51,7 @@ class LoanApplication {
     this.spouseLastName,
     this.childFirstName,
     this.childLastName,
+    this.comakerContactNo,
     this.groupName,
     this.memberEmail,
     this.memberPhone,
@@ -74,6 +76,7 @@ class LoanApplication {
       'comaker_spouse_last_name': spouseLastName,
       'comaker_child_first_name': childFirstName,
       'comaker_child_last_name': childLastName,
+      'comaker_contact_no': comakerContactNo,
       'group_affiliation': groupName,
       'member_email': memberEmail,
       'member_phone': memberPhone,
@@ -114,6 +117,7 @@ class _MemAppliformState extends State<MemAppliform> {
   final TextEditingController spouseLNameController = TextEditingController();
   final TextEditingController childFNameController = TextEditingController();
   final TextEditingController childLNameController = TextEditingController();
+  final TextEditingController comakerContactController = TextEditingController();
   final TextEditingController groupController = TextEditingController();
   
   // contact info
@@ -201,8 +205,6 @@ class _MemAppliformState extends State<MemAppliform> {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text("Birth date missing in member record."))
   );
-  return;
-  }
 
   // Parse database birth date
   final DateTime dbBirthDate = DateTime.parse(memberRecord['date_of_birth']);
@@ -328,6 +330,7 @@ class _MemAppliformState extends State<MemAppliform> {
     spouseLastName: spouseLNameController.text,
     childFirstName: childFNameController.text,
     childLastName: childLNameController.text,
+      comakerContactNo: comakerContactController.text,
     groupName: groupController.text,
     memberEmail: emailController.text,
     memberPhone: phoneNumController.text,
@@ -365,6 +368,7 @@ class _MemAppliformState extends State<MemAppliform> {
               'comaker_spouse_last_name': spouseLNameController.text,
               'comaker_child_first_name': childFNameController.text,
               'comaker_child_last_name': childLNameController.text,
+              'comaker_contact_no': comakerContactController.text,
               'created_at': appliDateController.text,
             };
             final bytes = await ExportService.buildLoanApplicationPdf(appData);
@@ -410,6 +414,9 @@ class _MemAppliformState extends State<MemAppliform> {
             }, {
               'Field': 'Reason',
               'Value': reasonController.text,
+            }, {
+              'Field': 'Co-maker Contact',
+              'Value': comakerContactController.text,
             }];
             await ExportService.exportAndShareExcel(
               context: context,

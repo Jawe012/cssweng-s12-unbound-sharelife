@@ -27,6 +27,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   String spouseLastName = '';
   String childFirstName = '';
   String childLastName = '';
+  String comakerContact = '';
   String groupName = '';
   String memberEmail = '';
   String memberPhone = '';
@@ -95,6 +96,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           spouseLastName = response['comaker_spouse_last_name'] ?? '';
           childFirstName = response['comaker_child_first_name'] ?? '';
           childLastName = response['comaker_child_last_name'] ?? '';
+          comakerContact = response['comaker_contact_no'] ?? '';
           groupName = response['comaker_group_name'] ?? '';
 
           // Contact Info
@@ -214,6 +216,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
             'comaker_spouse_last_name': loanRecord['comaker_spouse_last_name'],
             'comaker_child_first_name': loanRecord['comaker_child_first_name'],
             'comaker_child_last_name': loanRecord['comaker_child_last_name'],
+              'comaker_contact_no': loanRecord['comaker_contact_no'],
             'member_email': loanRecord['member_email'],
             'member_phone': loanRecord['member_phone'],
             'address': loanRecord['address'],
@@ -392,7 +395,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   }
 
   Widget loanCoMakers(String spouseFName, String spouseLName,
-                      String childFName, String childLName, String groupName) {
+                      String childFName, String childLName, String groupName, String comakerContact) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -412,6 +415,8 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                 Text("Children Last Name: ", style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text("Group Name: ", style: TextStyle(fontSize: contentFont)),
+                SizedBox(height: textSpacing),
+                Text("Co-maker Contact: ", style: TextStyle(fontSize: contentFont)),
               ],
             ),
             SizedBox(width: dataSpacing),
@@ -427,6 +432,8 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                 Text('$childLName', style: TextStyle(fontSize: contentFont)),
                 SizedBox(height: textSpacing),
                 Text('$groupName', style: TextStyle(fontSize: contentFont)),
+                SizedBox(height: textSpacing),
+                Text('$comakerContact', style: TextStyle(fontSize: contentFont)),
               ],
             ),
           ],
@@ -632,7 +639,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                                         loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 
                                               int.tryParse(installment) ?? 0, repaymentTerm, businessType),
                                         personalInfo(memberFirstName, memberLastName, memberBirthDate, age),
-                                        loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName, groupName),
+                                        loanCoMakers(spouseFirstName, spouseLastName, childFirstName, childLastName, groupName, comakerContact),
                                         contactInfo(memberEmail, memberPhone, address),
                                       ],
                                     ),

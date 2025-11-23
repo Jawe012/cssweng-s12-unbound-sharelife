@@ -39,6 +39,7 @@ class _EncAppliformState extends State<EncAppliform> {
   final TextEditingController spouseLNameController = TextEditingController();
   final TextEditingController childFNameController = TextEditingController();
   final TextEditingController childLNameController = TextEditingController();
+  final TextEditingController comakerContactController = TextEditingController();
   final TextEditingController groupController = TextEditingController();
   
   // contact info
@@ -107,6 +108,7 @@ class _EncAppliformState extends State<EncAppliform> {
               'loan_purpose': reasonController.text,
               'payment_term': termController.text,
               'business_name': businessController.text,
+              'comaker_contact_no': comakerContactController.text,
               'spouse_first_name': spouseFNameController.text,
               'spouse_last_name': spouseLNameController.text,
               'child_first_name': childFNameController.text,
@@ -168,6 +170,9 @@ class _EncAppliformState extends State<EncAppliform> {
             }, {
               'field': 'Loan Reason/Purpose',
               'value': reasonController.text,
+            }, {
+              'field': 'Co-maker Contact',
+              'value': comakerContactController.text,
             }, {
               'field': 'Spouse First Name',
               'value': spouseFNameController.text,
@@ -536,6 +541,7 @@ class _EncAppliformState extends State<EncAppliform> {
       'installment': instController.text,
       // Normalize repayment term to lowercase to match DB enum values
       'repayment_term': termController.text.toLowerCase(),
+      'comaker_contact_no': comakerContactController.text,
       'loan_amount': int.tryParse(loanAmtController.text) ?? 0,
       'annual_income': int.tryParse(anlIncController.text) ?? 0,
       'business_type': businessController.text,
@@ -832,6 +838,20 @@ class _EncAppliformState extends State<EncAppliform> {
                 hint: "e.g. Garcia",
               ),
             ),
+          ],
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: TextInputField(
+                label: "Co-maker Contact No",
+                controller: comakerContactController,
+                hint: "+63 912 345 6789",
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(child: SizedBox.shrink()),
           ],
         ),
         SizedBox(height: 16),

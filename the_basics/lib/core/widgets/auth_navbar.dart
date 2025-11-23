@@ -45,7 +45,7 @@ class AuthNavBar extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           const Text(
-            'Unbound Sharelife Loan Handling System',
+            'Sharelife Loan Handling System',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
