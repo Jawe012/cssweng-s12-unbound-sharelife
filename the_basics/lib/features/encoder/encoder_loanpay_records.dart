@@ -56,7 +56,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
           final memberResponse = await Supabase.instance.client
               .from('members')
               .select('first_name, last_name')
-              .eq('member_id', memberId)
+              .eq('id', memberId)
               .maybeSingle();
           
           if (memberResponse != null) {

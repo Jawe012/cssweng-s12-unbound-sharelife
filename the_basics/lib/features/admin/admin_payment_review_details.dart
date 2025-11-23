@@ -382,11 +382,64 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                   SizedBox(height: textSpacing),
                   if (gcashScreenshotPath != null)
                     InkWell(
-                      onTap: () {
-                        // TODO: Show image preview
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Screenshot path: $gcashScreenshotPath'))
-                        );
+                      onTap: () async {
+                        try {
+                          // Get public URL from storage
+                          final publicUrl = Supabase.instance.client.storage
+                              .from('payment_receipts')
+                              .getPublicUrl(gcashScreenshotPath!);
+                          
+                          // Show image in dialog
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AppBar(
+                                      title: const Text('GCash Screenshot'),
+                                      automaticallyImplyLeading: false,
+                                      actions: [
+                                        IconButton(
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () => Navigator.pop(context),
+                                        ),
+                                      ],
+                                    ),
+                                    Expanded(
+                                      child: InteractiveViewer(
+                                        child: Image.network(
+                                          publicUrl,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.error, size: 48, color: Colors.red),
+                                                  SizedBox(height: 16),
+                                                  Text('Failed to load image'),
+                                                  SizedBox(height: 8),
+                                                  Text(publicUrl, style: TextStyle(fontSize: 12)),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error loading screenshot: $e')),
+                            );
+                          }
+                        }
                       },
                       child: Text('View Screenshot', 
                           style: TextStyle(fontSize: contentFont, color: Colors.blue, decoration: TextDecoration.underline)),

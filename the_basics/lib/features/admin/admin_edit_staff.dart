@@ -61,7 +61,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
       final supabase = Supabase.instance.client;
       final response = await supabase
           .from('staff')
-          .select('first_name, last_name, date_of_birth, email_address, phone_number, home_address, role')
+          .select('first_name, last_name, date_of_birth, email_address, contact_no, role')
           .eq('id', id)
           .maybeSingle();
 
@@ -71,8 +71,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
           lastNameController.text = response['last_name'] ?? '';
           dobController.text = response['date_of_birth'] ?? '';
           emailController.text = response['email_address'] ?? '';
-          phoneController.text = response['phone_number'] ?? '';
-          addressController.text = response['home_address'] ?? '';
+          phoneController.text = response['contact_no'] ?? '';
           _role = (response['role'] ?? '').toString();
           _roleLoaded = true;
           isLoading = false;
@@ -119,8 +118,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
         'last_name': lastNameController.text.trim(),
         'date_of_birth': dobController.text.trim(),
         'email_address': emailController.text.trim(),
-        'phone_number': phoneController.text.trim(),
-        'home_address': addressController.text.trim(),
+        'contact_no': phoneController.text.trim(),
       };
 
       await supabase

@@ -2,9 +2,70 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class EncoderDashboard extends StatelessWidget {
+class EncoderDashboard extends StatefulWidget {
   const EncoderDashboard({super.key});
+
+  @override
+  State<EncoderDashboard> createState() => _EncoderDashboardState();
+}
+
+class _EncoderDashboardState extends State<EncoderDashboard> {
+  int _pendingApplications = 0;
+  int _pendingApproval = 0;
+  int _approvedApplications = 0;
+  int _totalEncodedApplications = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatistics();
+  }
+
+  Future<void> _loadStatistics() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Get current encoder's staff ID
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Fetch pending applications (status = 'Pending')
+      final pendingResp = await supabase
+          .from('loan_application')
+          .select('application_id')
+          .eq('status', 'Pending');
+      
+      // Fetch approved applications from approved_loans
+      final approvedResp = await supabase
+          .from('approved_loans')
+          .select('application_id');
+
+      // Total encoded is all loan_application entries
+      final totalResp = await supabase
+          .from('loan_application')
+          .select('application_id');
+
+      setState(() {
+        _pendingApplications = pendingResp.length;
+        _pendingApproval = pendingResp.length; // Same as pending for now
+        _approvedApplications = approvedResp.length;
+        _totalEncodedApplications = totalResp.length;
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      debugPrint('[EncoderDashboard] Error loading statistics: $e');
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +93,9 @@ class EncoderDashboard extends StatelessWidget {
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                           ),
                           SizedBox(height: 24),
-                          Expanded(
+                          _isLoading
+                              ? Center(child: CircularProgressIndicator())
+                              : Expanded(
                             child: GridView.count(
                               crossAxisCount: 2,
                               crossAxisSpacing: 16,
@@ -42,22 +105,22 @@ class EncoderDashboard extends StatelessWidget {
                                 SummaryCard(
                                   title: "Pending Applications", 
                                   desc: "Applications currently awaiting review, decision, or further action", 
-                                  value: "123", 
+                                  value: "$_pendingApplications", 
                                   icon: Icons.pending_actions),
                                 SummaryCard(
                                   title: "Pending Approval", 
                                   desc: "Encoded applications that are awaiting administrator approval", 
-                                  value: "456", 
+                                  value: "$_pendingApproval", 
                                   icon: CupertinoIcons.hourglass),
                                 SummaryCard(
                                   title: "Approved Applications", 
                                   desc: "Applications that have been reviewed and approved", 
-                                  value: "101", 
+                                  value: "$_approvedApplications", 
                                   icon: Icons.check_circle),
                                 SummaryCard(
                                   title: "Total Encoded Applications", 
                                   desc: "The total number of applications that have been encoded", 
-                                  value: "789", 
+                                  value: "$_totalEncodedApplications", 
                                   icon: Icons.checklist),
                               ],
                             ),

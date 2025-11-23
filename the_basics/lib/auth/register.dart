@@ -24,6 +24,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmPasswordController = TextEditingController();
 
   bool _showConfirmPassword = false;
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -361,8 +362,12 @@ class _RegisterPageState extends State<RegisterPage> {
               Row(
                 children: [
                   Checkbox(
-                    value: false,
-                    onChanged: (value) {},
+                    value: _rememberMe,
+                    onChanged: (value) {
+                      setState(() {
+                        _rememberMe = value ?? false;
+                      });
+                    },
                   ),
                   const Text('Remember me?'),
                 ],

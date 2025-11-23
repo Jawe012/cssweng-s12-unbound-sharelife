@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/export_dropdown_button.dart';
+import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:the_basics/core/utils/export_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -177,10 +178,56 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
         return;
       }
 
-      // Validate required fields
-      if (refNumberController.text.isEmpty || payToController.text.isEmpty) {
+      // Validate all required fields (everything except prepared_by fields)
+      List<String> missingFields = [];
+      
+      if (refNumberController.text.isEmpty) missingFields.add('Reference Number');
+      if (payToController.text.isEmpty) missingFields.add('Pay To');
+      if (dateController.text.isEmpty) missingFields.add('Date Issued');
+      if (satelliteOfficeController.text.isEmpty) missingFields.add('Satellite Office Unit');
+      if (bankController.text.isEmpty) missingFields.add('Bank');
+      if (checkNumberController.text.isEmpty) missingFields.add('Check Number');
+      if (receivedSumController.text.isEmpty) missingFields.add('Received Sum');
+      
+      // Validate particulars (at least one row)
+      if (particularsRows.isEmpty || 
+          (particularsRows.length == 1 && 
+           particularsRows[0]['particular'].text.isEmpty && 
+           particularsRows[0]['amount'].text.isEmpty)) {
+        missingFields.add('At least one Particular entry');
+      }
+      
+      // Validate account rows (at least one row)
+      if (accountRows.isEmpty || 
+          (accountRows.length == 1 && 
+           accountRows[0]['title'].text.isEmpty && 
+           accountRows[0]['debit'].text.isEmpty && 
+           accountRows[0]['credit'].text.isEmpty)) {
+        missingFields.add('At least one Account entry');
+      }
+      
+      // Validate checked_by fields (name, signature, date)
+      if (checkedNameController.text.isEmpty) missingFields.add('Checked By Name');
+      if (checkedSignature == null) missingFields.add('Checked By Signature');
+      if (checkedDateController.text.isEmpty) missingFields.add('Checked By Date');
+      
+      // Validate approved_by fields (name, signature, date)
+      if (approvedNameController.text.isEmpty) missingFields.add('Approved By Name');
+      if (approvedSignature == null) missingFields.add('Approved By Signature');
+      if (approvedDateController.text.isEmpty) missingFields.add('Approved By Date');
+      
+      // Validate received_by fields (name, signature, date)
+      if (receivedNameController.text.isEmpty) missingFields.add('Received By Name');
+      if (receivedSignature == null) missingFields.add('Received By Signature');
+      if (receivedDateController.text.isEmpty) missingFields.add('Received By Date');
+      
+      if (missingFields.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please fill in all required fields'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Missing required fields: ${missingFields.join(", ")}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
         );
         return;
       }
@@ -354,13 +401,9 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
         SizedBox(height: 8),
         SizedBox(
           width: 150,
-          child: TextField(
+          child: DateInputField(
+            label: "Date",
             controller: dateController,
-            decoration: InputDecoration(
-              labelText: "Date",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            ),
           ),
         ),
       ],
@@ -395,13 +438,9 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
             ),
             SizedBox(width: 12),
             Flexible(
-              child: TextField(
+              child: DateInputField(
+                label: "Date",
                 controller: dateController,
-                decoration: InputDecoration(
-                  labelText: "Date",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
               ),
             ),
           ],

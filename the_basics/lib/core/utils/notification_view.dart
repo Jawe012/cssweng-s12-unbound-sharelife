@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NotificationViewPage extends StatelessWidget {
   const NotificationViewPage({super.key});
@@ -298,7 +299,7 @@ class NotificationViewPage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamed(context, '/payment-records'),
+                      onPressed: () => Navigator.pushNamed(context, '/member-payment-history'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -378,7 +379,22 @@ class NotificationViewPage extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => Navigator.pushNamed(context, '/contact-support'),
+                          onPressed: () async {
+                            final Uri emailUri = Uri(
+                              scheme: 'mailto',
+                              path: 'support@sharelife.coop',
+                              query: 'subject=Support Request&body=Hello ShareLife Support Team,%0D%0A%0D%0AI need assistance with:%0D%0A',
+                            );
+                            if (await canLaunchUrl(emailUri)) {
+                              await launchUrl(emailUri);
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Could not open email client')),
+                                );
+                              }
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange,
                             padding: const EdgeInsets.symmetric(vertical: 14),

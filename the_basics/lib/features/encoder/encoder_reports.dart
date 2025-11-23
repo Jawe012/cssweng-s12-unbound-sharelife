@@ -64,7 +64,7 @@ class _EncoderReportsState extends State<EncoderReports> {
           final memberResponse = await Supabase.instance.client
               .from('members')
               .select('first_name, last_name')
-              .eq('member_id', memberId)
+              .eq('id', memberId)
               .maybeSingle();
           
           if (memberResponse != null) {
@@ -123,13 +123,13 @@ class _EncoderReportsState extends State<EncoderReports> {
         if (memberId != null) {
           final memberResponse = await Supabase.instance.client
               .from('members')
-              .select('first_name, last_name, contact_number')
-              .eq('member_id', memberId)
+              .select('first_name, last_name, contact_no')
+              .eq('id', memberId)
               .maybeSingle();
           
           if (memberResponse != null) {
             memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
-            contactNo = memberResponse['contact_number'] ?? 'N/A';
+            contactNo = memberResponse['contact_no'] ?? 'N/A';
           }
         }
 
@@ -185,7 +185,7 @@ class _EncoderReportsState extends State<EncoderReports> {
             final memberResponse = await Supabase.instance.client
                 .from('members')
                 .select('first_name, last_name')
-                .eq('member_id', loan['member_id'])
+                .eq('id', loan['member_id'])
                 .maybeSingle();
             
             if (memberResponse != null) {

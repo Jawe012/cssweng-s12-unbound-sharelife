@@ -69,7 +69,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
       // get all payments for loans
       final paymentsRes = await supabase
           .from('payments')
-          .select('payment_id, approved_loan_id, amount, payment_date, installment_number, payment_type, bank_name, gcash_reference, status, created_at')
+          .select('payment_id, approved_loan_id, amount, payment_date, installment_number, payment_type, bank_name, gcash_reference, gcash_screenshot_path, status, created_at, staff_id')
           .inFilter('approved_loan_id', loanIds)
           .order('created_at', ascending: false);
 
@@ -77,29 +77,54 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
       debugPrint('[PaymentHistory] Fetched ${fetchedPayments.length} payments');
 
       final loanMap = {for (var loan in loans) loan['application_id']: loan};
-      final enrichedPayments = fetchedPayments.map((payment) {
+      
+      // Fetch staff names for payments
+      final enrichedPayments = <Map<String, dynamic>>[];
+      for (var payment in fetchedPayments) {
         final loanId = payment['approved_loan_id'];
         final loan = loanMap[loanId];
         
-        return {
+        String staffName = 'N/A';
+        final staffId = payment['staff_id'];
+        if (staffId != null) {
+          try {
+            final staffRes = await supabase
+                .from('staff')
+                .select('first_name, last_name')
+                .eq('id', staffId)
+                .maybeSingle();
+            if (staffRes != null) {
+              staffName = '${staffRes['first_name']} ${staffRes['last_name']}';
+            }
+          } catch (e) {
+            debugPrint('[PaymentHistory] Error fetching staff for payment ${payment['payment_id']}: $e');
+          }
+        }
+        
+        enrichedPayments.add({
           ...payment,
           'loan_amount': loan?['loan_amount'] ?? 0,
           'repayment_term': loan?['repayment_term'] ?? 'N/A',
           'member_name': '${loan?['member_first_name'] ?? ''} ${loan?['member_last_name'] ?? ''}'.trim(),
-        };
-      }).toList();
+          'staff_name': staffName,
+        });
+      }
 
-      // summary stats
+      // summary stats - only count approved payments for total
       double total = 0.0;
       double pending = 0.0;
+      int approvedCount = 0;
       for (var payment in enrichedPayments) {
         final amount = (payment['amount'] is num) 
             ? (payment['amount'] as num).toDouble() 
             : double.tryParse(payment['amount'].toString()) ?? 0.0;
         
-        total += amount;
+        final status = payment['status']?.toString() ?? '';
         
-        if (payment['status'] == 'Pending Approval') {
+        if (status == 'Approved') {
+          total += amount;
+          approvedCount++;
+        } else if (status == 'Pending Approval') {
           pending += amount;
         }
       }
@@ -108,7 +133,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
         payments = enrichedPayments;
         filteredPayments = enrichedPayments;
         totalPaid = total;
-        totalPayments = enrichedPayments.length;
+        totalPayments = approvedCount;
         pendingAmount = pending;
         isLoading = false;
       });
@@ -431,6 +456,64 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
     }
   }
 
+  Future<void> _viewScreenshot(String? path) async {
+    if (path == null) return;
+    
+    try {
+      final publicUrl = Supabase.instance.client.storage
+          .from('payment_receipts')
+          .getPublicUrl(path);
+      
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppBar(
+                  title: const Text('Payment Screenshot'),
+                  automaticallyImplyLeading: false,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: InteractiveViewer(
+                    child: Image.network(
+                      publicUrl,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, size: 48, color: Colors.red),
+                              SizedBox(height: 16),
+                              Text('Failed to load image'),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading screenshot: $e')),
+        );
+      }
+    }
+  }
+
   Widget paymentsTable() {
     if (isLoading) {
       return Expanded(
@@ -533,6 +616,13 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           onSort: (i, asc) => onSort(i, asc)),
                       DataColumn(
+                          label: Text("Staff",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          onSort: (i, asc) => onSort(i, asc)),
+                      DataColumn(
+                          label: Text("Screenshot",
+                              style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(
                           label: Text("Payment Date",
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           onSort: (i, asc) => onSort(i, asc)),
@@ -550,6 +640,21 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                             DataCell(Text(ExportService.safeCurrency(payment["amount"]))),
                             DataCell(Text(payment["payment_type"] ?? 'N/A')),
                             DataCell(Text(_getReference(payment))),
+                            DataCell(Text(payment["staff_name"] ?? 'N/A')),
+                            DataCell(
+                              payment["gcash_screenshot_path"] != null
+                                  ? InkWell(
+                                      onTap: () => _viewScreenshot(payment["gcash_screenshot_path"]),
+                                      child: Text(
+                                        'View',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    )
+                                  : Text('N/A', style: TextStyle(color: Colors.grey)),
+                            ),
                             DataCell(Text(_formatDate(payment["payment_date"]))),
                             DataCell(
                               Container(
