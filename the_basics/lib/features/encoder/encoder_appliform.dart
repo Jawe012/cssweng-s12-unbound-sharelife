@@ -534,7 +534,8 @@ class _EncAppliformState extends State<EncAppliform> {
     final payload = {
       'member_id': selectedMemberId,
       'installment': instController.text,
-      'repayment_term': termController.text,
+      // Normalize repayment term to lowercase to match DB enum values
+      'repayment_term': termController.text.toLowerCase(),
       'loan_amount': int.tryParse(loanAmtController.text) ?? 0,
       'annual_income': int.tryParse(anlIncController.text) ?? 0,
       'business_type': businessController.text,

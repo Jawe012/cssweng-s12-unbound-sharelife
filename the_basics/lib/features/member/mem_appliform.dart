@@ -61,7 +61,8 @@ class LoanApplication {
     return {
       'member_id': memberId,
       'installment': installment,
-      'repayment_term': repaymentTerm,
+      // Normalize repayment term to lowercase to match DB enum values (e.g. 'monthly', 'bimonthly')
+      'repayment_term': repaymentTerm?.toLowerCase(),
       'loan_amount': loanAmount,
       'annual_income': annualIncome,
       'business_type': businessType,
