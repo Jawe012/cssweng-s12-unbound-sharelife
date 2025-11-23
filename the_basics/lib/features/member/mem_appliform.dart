@@ -202,12 +202,16 @@ class _MemAppliformState extends State<MemAppliform> {
   }
 
   if (memberRecord['date_of_birth'] == null) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text("Birth date missing in member record."))
-  );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Birth date missing in member record."))
+    );
+    return;
+  }
 
   // Parse database birth date
   final DateTime dbBirthDate = DateTime.parse(memberRecord['date_of_birth']);
+
+  
   
   // Normalize values for comparison (trim whitespace)
   final dbFirstName = (memberRecord['first_name'] ?? '').toString().trim();
