@@ -63,8 +63,8 @@ class LoanApplication {
     return {
       'member_id': memberId,
       'installment': installment,
-      // Normalize repayment term to lowercase to match DB enum values (e.g. 'monthly', 'bimonthly')
-      'repayment_term': repaymentTerm?.toLowerCase(),
+      // Send repayment term as provided by the UI (do not force lowercase)
+      'repayment_term': repaymentTerm,
       'loan_amount': loanAmount,
       'annual_income': annualIncome,
       'business_type': businessType,
@@ -268,7 +268,7 @@ class _MemAppliformState extends State<MemAppliform> {
   try {
     final existing = await Supabase.instance.client
         .from('loan_application')
-        .select('id,status')
+        .select('application_id,status')
         .eq('member_id', memberRecord['id'])
         .limit(1) as List<dynamic>;
     if (existing.isNotEmpty) {

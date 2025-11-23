@@ -505,7 +505,7 @@ class _EncAppliformState extends State<EncAppliform> {
     try {
       final existing = await Supabase.instance.client
           .from('loan_application')
-          .select('id,status')
+          .select('application_id,status')
           .eq('member_id', selectedMemberId!)
           .limit(1) as List<dynamic>;
       if (existing.isNotEmpty) {
@@ -539,8 +539,8 @@ class _EncAppliformState extends State<EncAppliform> {
     final payload = {
       'member_id': selectedMemberId,
       'installment': instController.text,
-      // Normalize repayment term to lowercase to match DB enum values
-      'repayment_term': termController.text.toLowerCase(),
+      // Send repayment term as provided by the UI (do not force lowercase)
+      'repayment_term': termController.text,
       'comaker_contact_no': comakerContactController.text,
       'loan_amount': int.tryParse(loanAmtController.text) ?? 0,
       'annual_income': int.tryParse(anlIncController.text) ?? 0,
