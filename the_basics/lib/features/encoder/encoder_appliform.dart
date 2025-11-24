@@ -56,6 +56,9 @@ class _EncAppliformState extends State<EncAppliform> {
   int? selectedMemberId;
   String? selectedMemberName;
   String? staffSearchError;
+  bool _selectedMemberHasPending = false;
+  bool _selectedMemberHasActive = false;
+  bool _checkingSelectedMemberStatus = false;
 
   // validation limits (adjust as needed)
   static const int minLoanAmount = 1000;
@@ -418,6 +421,52 @@ class _EncAppliformState extends State<EncAppliform> {
         emailController.text = email;
         phoneNumController.text = contact;
       });
+      debugPrint('[EncoderAppliform] Selected member: id=$selectedMemberId name=$selectedMemberName email=$email');
+      // check loan status for this selected member and show frontend error if needed
+      if (selectedMemberId != null) {
+        setState(() { _checkingSelectedMemberStatus = true; });
+        await _checkLoanStatusForMember(selectedMemberId!);
+        debugPrint('[EncoderAppliform] Finished loan status check for member: $selectedMemberId (pending=$_selectedMemberHasPending active=$_selectedMemberHasActive)');
+        if (mounted) setState(() { _checkingSelectedMemberStatus = false; });
+      }
+    }
+  }
+
+  Future<void> _checkLoanStatusForMember(int memberId) async {
+    try {
+      debugPrint('[EncoderAppliform] Checking loan status for memberId=$memberId');
+
+      // Mirror mem_appliform: use limit(1) to get a list and check isNotEmpty
+      final pending = await Supabase.instance.client
+          .from('loan_application')
+          .select('application_id')
+          .eq('member_id', memberId)
+          .eq('status', 'Pending')
+          .limit(1) as List<dynamic>;
+
+      final active = await Supabase.instance.client
+          .from('approved_loans')
+          .select('application_id')
+          .eq('member_id', memberId)
+          .eq('status', 'active')
+          .limit(1) as List<dynamic>;
+
+      debugPrint('[EncoderAppliform] loan_application query returned ${pending.length} rows for memberId=$memberId');
+      if (pending.isNotEmpty) debugPrint('[EncoderAppliform] pending record: ${pending.first}');
+      debugPrint('[EncoderAppliform] approved_loans query returned ${active.length} rows for memberId=$memberId');
+      if (active.isNotEmpty) debugPrint('[EncoderAppliform] active record: ${active.first}');
+
+      if (mounted) setState(() {
+        _selectedMemberHasPending = pending.isNotEmpty;
+        _selectedMemberHasActive = active.isNotEmpty;
+      });
+
+    } catch (e) {
+      debugPrint('Error checking loan status for member $memberId: $e');
+      if (mounted) setState(() {
+        _selectedMemberHasPending = false;
+        _selectedMemberHasActive = false;
+      });
     }
   }
 
@@ -473,6 +522,61 @@ class _EncAppliformState extends State<EncAppliform> {
       return;
     }
 
+    // Validate application date is not in the past
+    try {
+      final appDateParts = appliDateController.text.split('-');
+      if (appDateParts.length == 3) {
+        final appDate = DateTime(int.parse(appDateParts[2]), int.parse(appDateParts[0]), int.parse(appDateParts[1]));
+        final today = DateTime.now();
+        final todayMidnight = DateTime(today.year, today.month, today.day);
+        if (appDate.isBefore(todayMidnight)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Application date cannot be in the past.'))
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid application date format.'))
+      );
+      return;
+    }
+
+    // Validate loan amount is positive (minimum 1)
+    final loanAmountText = loanAmtController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final loanAmount = int.tryParse(loanAmountText);
+    if (loanAmount == null || loanAmount < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loan amount must be at least 1.'))
+      );
+      return;
+    }
+
+    // Validate email format
+    if (!_emailRegExp.hasMatch(emailController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.'))
+      );
+      return;
+    }
+
+    // Validate annual income (must be at least 1 peso)
+    final anlIncText = anlIncController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (anlIncText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Annual income must be at least 1.'))
+      );
+      return;
+    }
+    final anlInc = double.tryParse(anlIncText) ?? 0.0;
+    if (anlInc < 1.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Annual income must be at least 1.'))
+      );
+      return;
+    }
+
     // get current signed-in user's email to resolve staff id
     final currentEmail = Supabase.instance.client.auth.currentUser?.email;
     if (currentEmail == null) {
@@ -502,6 +606,27 @@ class _EncAppliformState extends State<EncAppliform> {
     }
 
     // Prevent duplicate pending applications for the same member
+    // Enforce max loan amount based on whether this is the member's first loan
+    int maxLoanAllowed = 3000; // default for first loan
+    try {
+      final prev = await Supabase.instance.client
+          .from('member_loans')
+          .select('application_id')
+          .eq('member_id', selectedMemberId!)
+          .limit(1) as List<dynamic>;
+      if (prev.isNotEmpty) maxLoanAllowed = 50000;
+    } catch (e) {
+      debugPrint('Error checking prior loans for member: $e');
+      maxLoanAllowed = 3000;
+    }
+
+    if (loanAmount > maxLoanAllowed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loan amount exceeds allowed maximum of Php $maxLoanAllowed for this member.'))
+      );
+      return;
+    }
+
     try {
       final existing = await Supabase.instance.client
           .from('loan_application')
@@ -518,6 +643,22 @@ class _EncAppliformState extends State<EncAppliform> {
       }
     } catch (e) {
       debugPrint('Error checking existing loan application: $e');
+    }
+
+    // Prevent if there's an active approved loan for this member
+    try {
+      final approved = await Supabase.instance.client
+          .from('approved_loans')
+          .select('application_id,status')
+          .eq('member_id', selectedMemberId!)
+          .eq('status', 'active')
+          .limit(1) as List<dynamic>;
+      if (approved.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This member already has an active approved loan and cannot apply for another.')));
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error checking approved loans: $e');
     }
 
 
@@ -598,9 +739,13 @@ class _EncAppliformState extends State<EncAppliform> {
         SizedBox(height: 16),
         SizedBox(
           width: 250,
-          child: DateInputField(
-            label: "Date of Application",
+          child: TextFormField(
             controller: appliDateController,
+            decoration: const InputDecoration(
+              labelText: 'Date of Application',
+            ),
+            readOnly: true,
+            enabled: true,
           ),
         ),
       ],
@@ -998,83 +1143,108 @@ class _EncAppliformState extends State<EncAppliform> {
                           // download button
                           buttonsRow(),
 
-                          // application form
-                          Expanded( 
+                          // application form area: always show member lookup, then either an info panel or the form
+                          Expanded(
                             child: Container(
-                            margin: const EdgeInsets.only(top: 16),
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
+                              margin: const EdgeInsets.only(top: 16),
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Form(
+                                key: _formKey,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Member Search (always visible)
+                                      memberSearchSection(),
+                                      const SizedBox(height: 12),
 
-                            // form content
-                            child: Form(
-                              key: _formKey,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-
-                                    // Member Search
-                                    memberSearchSection(),
-                                    const SizedBox(height: 12),
-
-                                    // Date of Application
-                                    appliDate(),
-                                    const SizedBox(height: 40),
-
-                                    // Loan Information
-                                    loanInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Personal Information
-                                    personalInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Loan Co-maker
-                                    coMakers(),
-                                    const SizedBox(height: 40),
-
-                                    // Contact Information
-                                    contactInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Consent
-                                    consentForm(),
-                                    const SizedBox(height: 18),
-
-                                    // Submit button
-                                    Center(
-                                      child: ElevatedButton.icon(
-                                        onPressed: submitForm,
-                                        icon: const SizedBox.shrink(),
-                                        label: const Text(
-                                          "Submit Application",
-                                          style: TextStyle(color: Colors.white),
+                                      // If we're currently checking the selected member's loan status, show a loader
+                                      if (_checkingSelectedMemberStatus) ...[
+                                        const SizedBox(height: 12),
+                                        Center(child: CircularProgressIndicator()),
+                                        const SizedBox(height: 12),
+                                      ] else
+                                      // If a member is selected and they have a pending or active loan,
+                                      // show the same informational panel used in the member form.
+                                      if (selectedMemberId != null && (_selectedMemberHasPending || _selectedMemberHasActive)) ...[
+                                        Center(
+                                          child: Column(
+                                            children: [
+                                              const SizedBox(height: 12),
+                                              Icon(Icons.info_outline, size: 48, color: Colors.orange),
+                                              const SizedBox(height: 12),
+                                              if (_selectedMemberHasPending) ...[
+                                                const Text('User already has a pending loan application!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                                const SizedBox(height: 8),
+                                                const Text('Cannot submit another loan application for the user while a pending application exists.', textAlign: TextAlign.center),
+                                              ] else if (_selectedMemberHasActive) ...[
+                                                const Text('User already has an active approved loan.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                                const SizedBox(height: 8),
+                                                const Text('Cannot apply for another loan for the user while an active loan exists.', textAlign: TextAlign.center),
+                                              ],
+                                              const SizedBox(height: 12),
+                                            ],
+                                          ),
                                         ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                                          backgroundColor: Colors.black,
-                                          minimumSize: const Size(100, 28),
-                                        ),
-                                      ),
-                                    ),
+                                      ] else ...[
+                                        // Date of Application
+                                        appliDate(),
+                                        const SizedBox(height: 40),
 
-                                  ],
+                                        // Loan Information
+                                        loanInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Personal Information
+                                        personalInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Loan Co-maker
+                                        coMakers(),
+                                        const SizedBox(height: 40),
+
+                                        // Contact Information
+                                        contactInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Consent
+                                        consentForm(),
+                                        const SizedBox(height: 18),
+
+                                        // Submit button
+                                        Center(
+                                          child: ElevatedButton.icon(
+                                            onPressed: submitForm,
+                                            icon: const SizedBox.shrink(),
+                                            label: const Text(
+                                              "Submit Application",
+                                              style: TextStyle(color: Colors.white),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                                              backgroundColor: Colors.black,
+                                              minimumSize: const Size(100, 28),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-
-                          ),
-                          ),
+                          )
 
 
                         ],

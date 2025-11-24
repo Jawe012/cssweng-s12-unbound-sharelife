@@ -235,7 +235,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
             items: [
               "Cash",
               "Gcash",
-              "Bank Transfer",
+              "Bank_Transfer",
             ],
             onChanged: (value) {
               setState(() {
@@ -327,7 +327,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
 
 
 
-      case "Bank Transfer":
+      case "Bank_Transfer":
         return [
           Row(
             children: [
@@ -667,10 +667,32 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           _showError("Please enter the date of payment");
           return;
         }
+        // Validate payment date is not in the past
+        try {
+          final dateParts = paymentDateController.text.split('/');
+          if (dateParts.length == 3) {
+            final payDate = DateTime(int.parse(dateParts[2]), int.parse(dateParts[0]), int.parse(dateParts[1]));
+            final today = DateTime.now();
+            final todayMidnight = DateTime(today.year, today.month, today.day);
+            if (payDate.isBefore(todayMidnight)) {
+              _showError("Payment date cannot be in the past.");
+              return;
+            }
+          }
+        } catch (e) {
+          _showError("Invalid payment date format. Use MM/DD/YYYY");
+          return;
+        }
         debugPrint('[EncoderPayment] Cash payment - date: ${paymentDateController.text}');
       } else if (selectedPaymentMethod == 'Gcash') {
         if (refNoController.text.trim().isEmpty) {
           _showError("Please enter the GCash reference number");
+          return;
+        }
+        // Validate GCash reference number (must be at least 13 digits)
+        final refDigits = refNoController.text.replaceAll(RegExp(r'\D'), '');
+        if (refDigits.length < 13) {
+          _showError("GCash reference number must be at least 13 digits.");
           return;
         }
         if (proofOfPaymentFile == null) {
@@ -678,9 +700,25 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
           return;
         }
         debugPrint('[EncoderPayment] GCash payment - ref: ${refNoController.text}');
-      } else if (selectedPaymentMethod == 'Bank Transfer') {
+      } else if (selectedPaymentMethod == 'Bank_Transfer') {
         if (paymentDateController.text.trim().isEmpty) {
           _showError("Please enter the bank deposit date");
+          return;
+        }
+        // Validate bank deposit date is not in the past
+        try {
+          final dateParts = paymentDateController.text.split('/');
+          if (dateParts.length == 3) {
+            final depositDate = DateTime(int.parse(dateParts[2]), int.parse(dateParts[0]), int.parse(dateParts[1]));
+            final today = DateTime.now();
+            final todayMidnight = DateTime(today.year, today.month, today.day);
+            if (depositDate.isBefore(todayMidnight)) {
+              _showError("Bank deposit date cannot be in the past.");
+              return;
+            }
+          }
+        } catch (e) {
+          _showError("Invalid bank deposit date format. Use MM/DD/YYYY");
           return;
         }
         if (bankNameController.text.trim().isEmpty) {
@@ -770,9 +808,9 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
       final installmentNumber = (existingPaymentsResp as List).length + 1;
       debugPrint('[EncoderPayment] Existing payments count: ${(existingPaymentsResp as List).length}, next installment: $installmentNumber');
 
-      // Parse payment date (for Cash and Bank Transfer)
+      // Parse payment date (for Cash and Bank_Transfer)
       DateTime? paymentDate;
-      if (selectedPaymentMethod == 'Cash' || selectedPaymentMethod == 'Bank Transfer') {
+      if (selectedPaymentMethod == 'Cash' || selectedPaymentMethod == 'Bank_Transfer') {
         try {
           final dateParts = paymentDateController.text.split('/');
           if (dateParts.length == 3) {
@@ -875,7 +913,7 @@ class _EncoderPaymentFormState extends State<EncoderPaymentForm> {
         debugPrint('[EncoderPayment] Added payment_date=${paymentDate.toIso8601String()}');
       }
 
-      if (selectedPaymentMethod == 'Bank Transfer') {
+      if (selectedPaymentMethod == 'Bank_Transfer') {
         paymentPayload['bank_deposit_date'] = paymentDate?.toIso8601String();
         paymentPayload['bank_name'] = bankNameController.text.trim();
         debugPrint('[EncoderPayment] Added bank transfer details');
