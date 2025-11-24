@@ -402,6 +402,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
         Text("Loan Co-makers", style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFont)),
         SizedBox(height: titleSpacing),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,22 +420,24 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                 Text("Co-maker Contact: ", style: TextStyle(fontSize: contentFont)),
               ],
             ),
-            SizedBox(width: dataSpacing),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$spouseFName', style: TextStyle(fontSize: contentFont)),
-                SizedBox(height: textSpacing),
-                Text('$spouseLName', style: TextStyle(fontSize: contentFont)),
-                SizedBox(height: textSpacing),
-                Text('$childFName', style: TextStyle(fontSize: contentFont)),
-                SizedBox(height: textSpacing),
-                Text('$childLName', style: TextStyle(fontSize: contentFont)),
-                SizedBox(height: textSpacing),
-                Text('$groupName', style: TextStyle(fontSize: contentFont)),
-                SizedBox(height: textSpacing),
-                Text('$comakerContact', style: TextStyle(fontSize: contentFont)),
-              ],
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$spouseFName', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis),
+                  SizedBox(height: textSpacing),
+                  Text('$spouseLName', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis),
+                  SizedBox(height: textSpacing),
+                  Text('$childFName', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis),
+                  SizedBox(height: textSpacing),
+                  Text('$childLName', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis),
+                  SizedBox(height: textSpacing),
+                  Text('$groupName', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis, maxLines: 2),
+                  SizedBox(height: textSpacing),
+                  Text('$comakerContact', style: TextStyle(fontSize: contentFont), overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
           ],
         )
@@ -633,7 +636,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                                         crossAxisCount: 2,
                                         crossAxisSpacing: 30,
                                         mainAxisSpacing: 30,
-                                        mainAxisExtent: 230,
+                                        mainAxisExtent: 280,
                                       ),
                                       children: [
                                         loanInfo(loanAmount.toDouble(), annualIncome.toDouble(), 

@@ -32,6 +32,8 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
   
   bool _isLoading = true;
   bool _isProcessing = false;
+  String? decision; // 'Validated' or 'Invalidated'
+  final TextEditingController remarksController = TextEditingController();
 
   // for spacing
   double titleSpacing = 18;
@@ -178,10 +180,35 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
     setState(() => _isProcessing = true);
     
     try {
-      // Update payment status
+      // Get current staff ID for reviewed_by if available
+      int? reviewerId;
+      try {
+        final currentUser = Supabase.instance.client.auth.currentUser;
+        final userEmail = currentUser?.email;
+        if (userEmail != null) {
+          final staffRecord = await Supabase.instance.client
+              .from('staff')
+              .select('id')
+              .eq('email_address', userEmail)
+              .maybeSingle();
+          if (staffRecord != null) reviewerId = staffRecord['id'] as int?;
+        }
+      } catch (e) {
+        debugPrint('Failed to resolve reviewer id: $e');
+      }
+
+      // Prepare update payload. Include remarks/date_reviewed/reviewed_by if available
+      final Map<String, dynamic> paymentUpdates = {
+        'status': newStatus,
+      };
+      if (remarksController.text.isNotEmpty) paymentUpdates['remarks'] = remarksController.text;
+      paymentUpdates['date_reviewed'] = DateTime.now().toIso8601String();
+      if (reviewerId != null) paymentUpdates['reviewed_by'] = reviewerId;
+
+      // Update payment status and metadata
       await Supabase.instance.client
           .from('payments')
-          .update({'status': newStatus})
+          .update(paymentUpdates)
           .eq('payment_id', paymentId);
 
       if (!mounted) return;
@@ -271,6 +298,12 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
         setState(() => _isProcessing = false);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    remarksController.dispose();
+    super.dispose();
   }
 
   void _showConfirmationDialog(String action, String newStatus) {
@@ -452,7 +485,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
           )
         ],
       );
-    } else if (paymentType == 'Bank Transfer') {
+    } else if (paymentType == 'Bank_Transfer' || paymentType == 'Bank Transfer') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -517,62 +550,73 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
   }
 
   Widget actionButtons() {
+    // Decision section mirrors Loan Review details: dropdown + remarks + confirm
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: 32),
-        Divider(),
-        SizedBox(height: 16),
-        Text("Actions",
+        SizedBox(height: 20),
+        Text("Decision",
             style: TextStyle(
-              fontWeight: FontWeight.bold, 
-              fontSize: titleFont
+              fontWeight: FontWeight.bold,
+              fontSize: titleFont,
             )),
         SizedBox(height: titleSpacing),
         Row(
           children: [
-            ElevatedButton(
-              onPressed: _isProcessing ? null : () => _showConfirmationDialog('Validate', 'Validated'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-              ),
-              child: _isProcessing 
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      "Validate",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-            ),
-            SizedBox(width: 16),
-            ElevatedButton(
-              onPressed: _isProcessing ? null : () => _showConfirmationDialog('Invalidate', 'Invalidated'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-              ),
-              child: _isProcessing 
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      "Invalidate",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+            Text("Decision:  "),
+            SizedBox(width: titleSpacing),
+            DropdownButton<String>(
+              value: decision,
+              hint: const Text('Choose'),
+              items: [
+                const DropdownMenuItem(value: 'Validated', child: Text('Validate')),
+                const DropdownMenuItem(value: 'Invalidated', child: Text('Invalidate')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  decision = value;
+                });
+              },
             ),
           ],
         ),
         SizedBox(height: 12),
+        TextField(
+          controller: remarksController,
+          decoration: InputDecoration(
+            labelText: "Remarks (optional)",
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+        SizedBox(height: 10),
         Text(
           "Member will be notified of the payment status update.",
-          style: TextStyle(color: Colors.grey, fontSize: 14),
+          style: TextStyle(color: Colors.grey),
         ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: (decision == null || _isProcessing) ? null : () => _showConfirmationDialog(decision == 'Validated' ? 'Validate' : 'Invalidate', decision!),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: decision == 'Validated'
+                ? Colors.green
+                : (decision == 'Invalidated' ? Colors.red : Colors.grey),
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+          ),
+          child: _isProcessing
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text(
+                  "Confirm",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+        ),
+        SizedBox(height: 12),
       ],
     );
   }
