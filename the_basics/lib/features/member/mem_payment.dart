@@ -455,7 +455,13 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+          )
+        ),
+        child: Column(
         children: [
 
           // top nav bar
@@ -566,6 +572,8 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
           ),
         ],
       ),
+      ),
+      
       
     );
   }

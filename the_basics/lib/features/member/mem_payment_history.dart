@@ -364,7 +364,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Payment ID",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -395,7 +395,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Start Date",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -422,7 +422,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "End Date",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -762,7 +762,13 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+          )
+        ),
+        child: Column(
         children: [
           // top nav bar
           TopNavBar(splash: "Member"),
@@ -819,6 +825,8 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           ),
         ],
       ),
+      ),
+      
     );
   }
 }
