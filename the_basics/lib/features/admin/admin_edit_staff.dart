@@ -4,6 +4,8 @@ import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:the_basics/core/utils/themes.dart';
+
 
 class AdminEditStaff extends StatefulWidget {
   const AdminEditStaff({super.key});
@@ -176,8 +178,14 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.fill,
+      ),
+    ),
+    child: Column(
         children: [
           TopNavBar(splash: "Admin"),
           Expanded(
@@ -209,11 +217,11 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                                   children: [
                                     Text(
                                       "Staff Details",
-                                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppThemes.pageTitle),
                                     ),
                                     Text(
-                                      "Staff Information",
-                                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                                      "Edit a staff member's information",
+                                      style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                                     ),
                                   ],
                                 ),
@@ -353,7 +361,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
                               child: ElevatedButton(
                                 onPressed: isSaving ? null : _saveStaffDetails,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
+                                  backgroundColor: AppThemes.black,
                                   padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -423,6 +431,7 @@ class _AdminEditStaffState extends State<AdminEditStaff> {
           ),
         ],
       ),
+    )
     );
   }
 }

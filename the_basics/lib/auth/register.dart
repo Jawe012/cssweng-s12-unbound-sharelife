@@ -186,7 +186,7 @@ class _RegisterPageState extends State<RegisterPage> {
           width: 800,
           padding: const EdgeInsets.all(40),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppThemes.authContainer,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
@@ -212,6 +212,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         const Text(
                           'Personal Information',
                           style: TextStyle(
+                            color: AppThemes.searchText,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -220,8 +221,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _firstNameController,
+                          style: TextStyle(color: AppThemes.authInput),
                           decoration: InputDecoration(
                             labelText: 'First Name',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'First Name',
                           ),
@@ -230,8 +233,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _lastNameController,
+                          style: TextStyle(color: AppThemes.authInput),
                           decoration: InputDecoration(
                             labelText: 'Last Name',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'Last Name',
                           ),
@@ -240,9 +245,11 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _dateOfBirthController,
+                          style: TextStyle(color: AppThemes.authInput),
                           readOnly: true,
                           decoration: InputDecoration(
                             labelText: 'Date of Birth',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'MM/DD/YYYY',
                             suffixIcon: Icon(Icons.calendar_today),
@@ -279,8 +286,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _contactNumberController,
+                          style: TextStyle(color: AppThemes.authInput),
                           decoration: InputDecoration(
                             labelText: 'Contact Number',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: '09XX XXX XXXX',
                           ),
@@ -299,6 +308,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         const Text(
                           'Log In Information',
                           style: TextStyle(
+                            color: AppThemes.searchText,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -307,8 +317,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _usernameController,
+                          style: TextStyle(color: AppThemes.authInput),
                           decoration: InputDecoration(
                             labelText: 'Username',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'Username'
                           ),
@@ -317,8 +329,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
                         TextField(
                           controller: _emailController,
+                          style: TextStyle(color: AppThemes.authInput),
                           decoration: InputDecoration(
                             labelText: 'Email Address',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'Email Address'
                           ),
@@ -327,9 +341,11 @@ class _RegisterPageState extends State<RegisterPage> {
                         
                         TextField(
                           controller: _passwordController,
+                          style: TextStyle(color: AppThemes.authInput),
                           obscureText: true,
                           decoration: InputDecoration(
                             labelText: 'Password',
+                            labelStyle: TextStyle(color: AppThemes.authFieldName),
                             border: OutlineInputBorder(),
                             hintText: 'Password'
                           ),
@@ -345,9 +361,11 @@ class _RegisterPageState extends State<RegisterPage> {
                               ? TextField(
                                   key: const ValueKey('confirm_field'),
                                   controller: _confirmPasswordController,
+                                  style: TextStyle(color: AppThemes.authInput),
                                   obscureText: true,
                                   decoration: const InputDecoration(
                                     labelText: 'Confirm Password',
+                                    labelStyle: TextStyle(color: AppThemes.authFieldName),
                                     border: OutlineInputBorder(),
                                     hintText: 'Confirm Password',
                                   ),
@@ -368,15 +386,23 @@ class _RegisterPageState extends State<RegisterPage> {
               // Remember me checkbox
               Row(
                 children: [
-                  Checkbox(
-                    value: _rememberMe,
-                    onChanged: (value) {
-                      setState(() {
-                        _rememberMe = value ?? false;
-                      });
-                    },
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      checkboxTheme: CheckboxThemeData(
+                        fillColor: MaterialStateProperty.all(AppThemes.authRememberFilled),
+                        checkColor: MaterialStateProperty.all(AppThemes.buttonText),
+                      ),
+                    ),
+                    child: Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                    ),
                   ),
-                  const Text('Remember me?'),
+
+                  const Text(
+                    'Remember me?',
+                    style: TextStyle(color: AppThemes.authOptions),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -385,8 +411,8 @@ class _RegisterPageState extends State<RegisterPage> {
               ElevatedButton(
                 onPressed: signUp,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0C0C0D),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppThemes.outerformButton,
+                  foregroundColor: AppThemes.buttonText,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
