@@ -15,18 +15,22 @@ class EncoderReports extends StatefulWidget {
 }
 
 class _EncoderReportsState extends State<EncoderReports> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+  
   int? sortColumnIndex;
   bool isAscending = true;
   String? selectedReportType;
   double buttonHeight = 28;
-  bool _isLoading = false;
 
-  // Real data from Supabase
+  // Loading states
+  bool _isLoading = false;
+  
+  // Fetched data from Supabase
   List<Map<String, dynamic>> _activeLoansData = [];
   List<Map<String, dynamic>> _overdueLoansData = [];
   List<Map<String, dynamic>> _memberLoansData = [];
   List<Map<String, dynamic>> _paymentCollectionData = [];
-  List<Map<String, dynamic>> _voucherRevenueData = [];
+  Map<String, dynamic> _voucherRevenueData = {};
 
   @override
   void initState() {
@@ -35,7 +39,7 @@ class _EncoderReportsState extends State<EncoderReports> {
   }
 
   Future<void> _loadInitialData() async {
-    setState(() => _isLoading = true);
+    // Load all reports on init
     await Future.wait([
       _fetchActiveLoans(),
       _fetchOverdueLoans(),
@@ -43,355 +47,310 @@ class _EncoderReportsState extends State<EncoderReports> {
       _fetchPaymentCollections(),
       _fetchVoucherRevenue(),
     ]);
-    setState(() => _isLoading = false);
   }
 
   Future<void> _fetchActiveLoans() async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final response = await Supabase.instance.client
+      final response = await _supabase
           .from('approved_loans')
-          .select('*')
+          .select('application_id, member_id, member_first_name, member_last_name, member_email, member_phone, loan_amount, created_at, outstanding_balance, status, amount_paid, repayment_term, installment')
           .eq('status', 'active')
           .order('created_at', ascending: false);
 
-      final List<Map<String, dynamic>> fetchedLoans = [];
+      final List<dynamic> data = response as List<dynamic>;
       
-      for (var loan in response) {
-        final memberId = loan['member_id'];
-        String memberName = 'Unknown Member';
-        
-        if (memberId != null) {
-          final memberResponse = await Supabase.instance.client
-              .from('members')
-              .select('first_name, last_name')
-              .eq('id', memberId)
-              .maybeSingle();
+      if (mounted) setState(() {
+        _activeLoansData = data.map((loan) {
+          // Generate loan ID format: LN-YYYY-XXXX
+          final appId = loan['application_id'] ?? 0;
+          final createdAt = loan['created_at'] != null 
+              ? DateTime.parse(loan['created_at']) 
+              : DateTime.now();
+          final loanId = 'LN-${createdAt.year}-${appId.toString().padLeft(4, '0')}';
           
-          if (memberResponse != null) {
-            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
-          }
-        }
-
-        final createdAt = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final year = createdAt.year;
-        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
-
-        final startDate = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
-
-        fetchedLoans.add({
-          'loanID': loanId,
-          'memName': memberName,
-          'loanType': loan['loan_type'] ?? 'Regular',
-          'startDate': startDate.toString().split(' ')[0],
-          'dueDate': dueDate.toString().split(' ')[0],
-          'principalAmt': ExportService.currencyFormat.format(loan['loan_amount'] ?? 0),
-          'remainBal': ExportService.currencyFormat.format(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0),
-        });
-      }
-
-      setState(() {
-        _activeLoansData = fetchedLoans;
+          return {
+            'loanID': loanId,
+            'memName': '${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}'.trim(),
+            'loanType': loan['installment'] ?? '-',
+            'startDate': createdAt.toString().split(' ')[0],
+            'dueDate': _calculateDueDate(createdAt, loan['repayment_term']),
+            'principalAmt': (loan['loan_amount'] ?? 0).toString(),
+            'remainBal': (loan['outstanding_balance'] ?? 0).toString(),
+          };
+        }).toList();
       });
     } catch (e) {
-      print('Error fetching active loans: $e');
-      setState(() {
-        _activeLoansData = [];
-      });
+      debugPrint('Error fetching active loans: $e');
+      // Keep placeholder data on error
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchOverdueLoans() async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final response = await Supabase.instance.client
+      final response = await _supabase
           .from('approved_loans')
-          .select('*')
+          .select('application_id, member_id, member_first_name, member_last_name, member_phone, loan_amount, created_at, outstanding_balance, status, repayment_term, installment')
           .eq('status', 'overdue')
           .order('created_at', ascending: false);
 
-      final List<Map<String, dynamic>> fetchedLoans = [];
+      final List<dynamic> data = response as List<dynamic>;
       
-      for (var loan in response) {
-        final memberId = loan['member_id'];
-        String memberName = 'Unknown Member';
-        String contactNo = 'N/A';
-        
-        if (memberId != null) {
-          final memberResponse = await Supabase.instance.client
-              .from('members')
-              .select('first_name, last_name, contact_no')
-              .eq('id', memberId)
-              .maybeSingle();
+      if (mounted) setState(() {
+        _overdueLoansData = data.map((loan) {
+          final appId = loan['application_id'] ?? 0;
+          final createdAt = loan['created_at'] != null 
+              ? DateTime.parse(loan['created_at']) 
+              : DateTime.now();
+          final loanId = 'LN-${createdAt.year}-${appId.toString().padLeft(4, '0')}';
+          final dueDate = _calculateDueDate(createdAt, loan['repayment_term']);
+          final dueDateObj = DateTime.tryParse(dueDate) ?? DateTime.now();
+          final daysOverdue = DateTime.now().difference(dueDateObj).inDays;
           
-          if (memberResponse != null) {
-            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
-            contactNo = memberResponse['contact_no'] ?? 'N/A';
-          }
-        }
-
-        final createdAt = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final year = createdAt.year;
-        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
-
-        final startDate = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
-        final daysOverdue = DateTime.now().difference(dueDate).inDays;
-
-        fetchedLoans.add({
-          'loanID': loanId,
-          'memName': memberName,
-          'dueDate': dueDate.toString().split(' ')[0],
-          'daysOverdue': daysOverdue > 0 ? daysOverdue : 0,
-          'remainBal': ExportService.currencyFormat.format(loan['remaining_balance'] ?? loan['loan_amount'] ?? 0),
-          'contactNo': contactNo,
-        });
-      }
-
-      setState(() {
-        _overdueLoansData = fetchedLoans;
+          return {
+            'loanID': loanId,
+            'memName': '${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}'.trim(),
+            'loanType': loan['installment'] ?? '-',
+            'dueDate': dueDate,
+            'daysOverdue': daysOverdue > 0 ? daysOverdue : 0,
+            'amountDue': (loan['outstanding_balance'] ?? 0).toString(),
+            'lateFees': '0', // Not in schema
+            'contactNo': loan['member_phone'] ?? '-',
+          };
+        }).toList();
       });
     } catch (e) {
-      print('Error fetching overdue loans: $e');
-      setState(() {
-        _overdueLoansData = [];
-      });
+      debugPrint('Error fetching overdue loans: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchMemberLoanSummary() async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final response = await Supabase.instance.client
+      // Fetch all approved loans grouped by member
+        final response = await _supabase
           .from('approved_loans')
-          .select('*')
-          .order('member_id', ascending: true);
+          .select('application_id, member_id, member_first_name, member_last_name, loan_amount, amount_paid, outstanding_balance, status, created_at');
 
-      Map<String, Map<String, dynamic>> memberSummary = {};
+      final List<dynamic> data = response as List<dynamic>;
       
-      for (var loan in response) {
-        final memberId = loan['member_id']?.toString() ?? 'unknown';
-        
-        if (!memberSummary.containsKey(memberId)) {
-          String memberName = 'Unknown Member';
-          
-          if (loan['member_id'] != null) {
-            final memberResponse = await Supabase.instance.client
-                .from('members')
-                .select('first_name, last_name')
-                .eq('id', loan['member_id'])
-                .maybeSingle();
-            
-            if (memberResponse != null) {
-              memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
-            }
-          }
-          
-          memberSummary[memberId] = {
-            'memName': memberName,
-            'totalLoans': 0,
-            'totalBorrowed': 0.0,
-            'totalPaid': 0.0,
-            'remainBal': 0.0,
-            'loanStatus': 'active',
-          };
-        }
-        
-        memberSummary[memberId]!['totalLoans'] += 1;
-        memberSummary[memberId]!['totalBorrowed'] += (loan['loan_amount'] ?? 0);
-        memberSummary[memberId]!['remainBal'] += (loan['remaining_balance'] ?? loan['loan_amount'] ?? 0);
-        
-        if (loan['status'] == 'overdue') {
-          memberSummary[memberId]!['loanStatus'] = 'overdue';
+      // Group by member_id
+      final Map<int, List<dynamic>> groupedByMember = {};
+      for (final loan in data) {
+        final memberId = loan['member_id'] as int;
+        groupedByMember.putIfAbsent(memberId, () => []).add(loan);
+      }
+
+      // Fetch last payment dates for each member
+      final paymentResponse = await _supabase
+          .from('payments')
+          .select('approved_loan_id, payment_date')
+          .order('payment_date', ascending: false);
+      
+      final payments = paymentResponse as List<dynamic>;
+      final Map<int, String> lastPaymentDates = {};
+      for (final payment in payments) {
+        final loanId = payment['approved_loan_id'] as int;
+        if (!lastPaymentDates.containsKey(loanId)) {
+          lastPaymentDates[loanId] = payment['payment_date'] ?? '';
         }
       }
 
-      final List<Map<String, dynamic>> fetchedSummary = memberSummary.values.map((summary) {
-        summary['totalPaid'] = summary['totalBorrowed'] - summary['remainBal'];
-        return {
-          'memName': summary['memName'],
-          'totalLoans': summary['totalLoans'],
-          'totalBorrowed': ExportService.currencyFormat.format(summary['totalBorrowed']),
-          'totalPaid': ExportService.currencyFormat.format(summary['totalPaid']),
-          'remainBal': ExportService.currencyFormat.format(summary['remainBal']),
-          'loanStatus': summary['loanStatus'],
-        };
-      }).toList();
+      if (mounted) setState(() {
+        _memberLoansData = groupedByMember.entries.map((entry) {
+          final loans = entry.value;
+          final firstLoan = loans.first;
+          
+          num totalBorrowed = 0;
+          num totalPaid = 0;
+          num outstandingBalance = 0;
+          String lastPaymentDate = '-';
+          String loanStatus = 'active';
+          // Find the most recent payment date for this member across their loans
+          DateTime? latest;
+          for (final loan in loans) {
+            final loanId = loan['application_id'];
+            if (loanId == null) continue;
+            final lp = lastPaymentDates[loanId as int];
+            if (lp == null || lp.toString().isEmpty) continue;
+            final parsed = DateTime.tryParse(lp.toString());
+            if (parsed == null) continue;
+            if (latest == null || parsed.isAfter(latest)) latest = parsed;
+          }
+          if (latest != null) {
+            lastPaymentDate = latest.toString().split(' ')[0];
+          }
+          
+          for (final loan in loans) {
+            totalBorrowed += (loan['loan_amount'] ?? 0) as num;
+            totalPaid += (loan['amount_paid'] ?? 0) as num;
+            outstandingBalance += (loan['outstanding_balance'] ?? 0) as num;
+            
+            if (loan['status'] == 'overdue') {
+              loanStatus = 'overdue';
+            } else if (loan['status'] == 'paid' && loanStatus == 'active') {
+              loanStatus = 'paid';
+            }
+          }
 
-      setState(() {
-        _memberLoansData = fetchedSummary;
+          return {
+            'memName': '${firstLoan['member_first_name'] ?? ''} ${firstLoan['member_last_name'] ?? ''}'.trim(),
+            'memID': entry.key.toString(),
+            'totalLoans': loans.length.toString(),
+            'totalBorrowed': totalBorrowed.toString(),
+            'totalPaid': totalPaid.toString(),
+            'outBal': outstandingBalance.toString(),
+            'lastPaid': lastPaymentDate,
+            'loanStatus': loanStatus,
+          };
+        }).toList();
       });
     } catch (e) {
-      print('Error fetching member loan summary: $e');
-      setState(() {
-        _memberLoansData = [];
-      });
+      debugPrint('Error fetching member loan summary: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchPaymentCollections() async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final response = await Supabase.instance.client
+      final response = await _supabase
           .from('payments')
-          .select('*')
+          .select('''
+            payment_id,
+            approved_loan_id,
+            staff_id,
+            amount,
+            payment_date,
+            installment_number,
+            payment_type,
+            status,
+            approved_loans(application_id, member_id, member_first_name, member_last_name, repayment_term)
+          ''')
           .order('payment_date', ascending: false);
 
-      final List<Map<String, dynamic>> fetchedPayments = [];
+      final List<dynamic> data = response as List<dynamic>;
       
-      for (var payment in response) {
-        final loanId = payment['loan_id'];
-        String loanRef = 'Unknown';
-        
-        if (loanId != null) {
-          final loanResponse = await Supabase.instance.client
-              .from('approved_loans')
-              .select('application_id, created_at')
-              .eq('loan_id', loanId)
-              .maybeSingle();
-          
-          if (loanResponse != null) {
-            final createdAt = loanResponse['created_at'] != null 
-                ? DateTime.parse(loanResponse['created_at']) 
-                : DateTime.now();
-            final year = createdAt.year;
-            loanRef = 'LN-$year-${loanResponse['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
-          }
+      // Fetch staff names
+      final staffIds = data.map((p) => p['staff_id']).where((id) => id != null).toSet().toList();
+      Map<int, String> staffNames = {};
+      if (staffIds.isNotEmpty) {
+        final staffResponse = await _supabase
+            .from('staff')
+            .select('id, first_name, last_name')
+            .inFilter('id', staffIds);
+        for (final staff in staffResponse as List<dynamic>) {
+          staffNames[staff['id']] = '${staff['first_name']} ${staff['last_name']}';
         }
-
-        String collectedBy = 'Unknown';
-        final staffId = payment['staff_id'];
-        if (staffId != null) {
-          final staffResponse = await Supabase.instance.client
-              .from('staff')
-              .select('first_name, last_name')
-              .eq('staff_id', staffId)
-              .maybeSingle();
-          
-          if (staffResponse != null) {
-            collectedBy = '${staffResponse['first_name']} ${staffResponse['last_name']}';
-          }
-        }
-
-        fetchedPayments.add({
-          'paymentID': payment['payment_id']?.toString() ?? 'N/A',
-          'loanRef': loanRef,
-          'amtPaid': ExportService.currencyFormat.format(payment['amount'] ?? 0),
-          'payDate': payment['payment_date'] != null 
-              ? DateTime.parse(payment['payment_date']).toString().split(' ')[0]
-              : 'N/A',
-          'payMethod': payment['payment_type'] ?? 'N/A',
-          'collectedBy': collectedBy,
-        });
       }
 
-      setState(() {
-        _paymentCollectionData = fetchedPayments;
+      if (mounted) setState(() {
+        _paymentCollectionData = data.map((payment) {
+          final loanData = payment['approved_loans'];
+          final staffId = payment['staff_id'];
+          
+          return {
+            'payID': (payment['payment_id'] ?? 0).toString(),
+            'memName': loanData != null 
+                ? '${loanData['member_first_name'] ?? ''} ${loanData['member_last_name'] ?? ''}'.trim()
+                : '-',
+            'memID': loanData != null ? (loanData['member_id'] ?? '-').toString() : '-',
+            'loanID': loanData != null ? 'LN-${DateTime.now().year}-${(loanData['application_id'] ?? 0).toString().padLeft(4, '0')}' : '-',
+            'payDate': payment['payment_date'] != null 
+                ? DateTime.parse(payment['payment_date']).toString().split(' ')[0]
+                : '-',
+            'payMethod': payment['payment_type'] ?? '-',
+            'amountPaid': (payment['amount'] ?? 0).toString(),
+            'collectedBy': staffId != null ? (staffNames[staffId] ?? 'Staff #$staffId') : 'Online',
+          };
+        }).toList();
       });
     } catch (e) {
-      print('Error fetching payment collections: $e');
-      setState(() {
-        _paymentCollectionData = [];
-      });
+      debugPrint('Error fetching payment collections: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _fetchVoucherRevenue() async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final loansResponse = await Supabase.instance.client
+      // Fetch aggregated revenue data
+      final loansResponse = await _supabase
           .from('approved_loans')
-          .select('*');
+          .select('loan_amount, outstanding_balance, amount_paid, status');
 
-      final paymentsResponse = await Supabase.instance.client
+      final paymentsResponse = await _supabase
           .from('payments')
-          .select('*');
+          .select('amount, status');
 
-      double totalDisbursed = 0;
-      double totalPaid = 0;
-      double totalOverdue = 0;
+      final loans = loansResponse as List<dynamic>;
+      final payments = paymentsResponse as List<dynamic>;
 
-      for (var loan in loansResponse) {
-        totalDisbursed += (loan['loan_amount'] ?? 0);
-        
-        if (loan['status'] == 'overdue') {
-          totalOverdue += (loan['remaining_balance'] ?? loan['loan_amount'] ?? 0);
+      num totalLoansApproved = loans.length;
+      num totalDisbursed = 0;
+      num totalOutstanding = 0;
+      num totalAmountPaid = 0;
+      num totalOverdue = 0;
+
+      for (final loan in loans) {
+        totalDisbursed += (loan['loan_amount'] ?? 0) as num;
+        totalOutstanding += (loan['outstanding_balance'] ?? 0) as num;
+        totalAmountPaid += (loan['amount_paid'] ?? 0) as num;
+        if ((loan['status'] ?? '') == 'overdue') {
+          totalOverdue += (loan['outstanding_balance'] ?? 0) as num;
         }
       }
 
-      for (var payment in paymentsResponse) {
-        totalPaid += (payment['amount'] ?? 0);
+      num totalPaymentsReceived = 0;
+      for (final payment in payments) {
+        final status = (payment['status'] ?? '').toString().toLowerCase();
+        if (status != 'pending approval') {
+          totalPaymentsReceived += (payment['amount'] ?? 0) as num;
+        }
       }
 
-      final outstanding = totalDisbursed - totalPaid;
-
-      setState(() {
-        _voucherRevenueData = [
-          {
-            'metric': 'Total Disbursed',
-            'value': ExportService.currencyFormat.format(totalDisbursed),
-          },
-          {
-            'metric': 'Total Paid',
-            'value': ExportService.currencyFormat.format(totalPaid),
-          },
-          {
-            'metric': 'Outstanding Balance',
-            'value': ExportService.currencyFormat.format(outstanding),
-          },
-          {
-            'metric': 'Overdue Amount',
-            'value': ExportService.currencyFormat.format(totalOverdue),
-          },
-        ];
+      if (mounted) setState(() {
+        _voucherRevenueData = {
+          'totalLoansApproved': totalLoansApproved.toString(),
+          'totalDisbursed': totalDisbursed.toString(),
+          'totalPaymentsReceived': totalPaymentsReceived.toString(),
+          'totalAmountPaid': totalAmountPaid.toString(),
+          'totalOutstanding': totalOutstanding.toString(),
+          'totalOverdue': totalOverdue.toString(),
+          'totalInterestEarned': '0', // Not in schema
+        };
       });
     } catch (e) {
-      print('Error fetching voucher revenue: $e');
-      setState(() {
-        _voucherRevenueData = [];
-      });
+      debugPrint('Error fetching voucher revenue: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  DateTime _calculateDueDate(DateTime startDate, int? repaymentTerm) {
-    if (repaymentTerm == null || repaymentTerm == 0) {
-      return startDate.add(Duration(days: 30));
+  String _calculateDueDate(DateTime startDate, dynamic repaymentTerm) {
+    // repaymentTerm could be "3 months", "6 months", "12 months", etc.
+    if (repaymentTerm == null) return startDate.toString().split(' ')[0];
+    
+    final termStr = repaymentTerm.toString().toLowerCase();
+    int months = 3; // default
+    
+    if (termStr.contains('3')) {
+      months = 3;
+    } else if (termStr.contains('6')) {
+      months = 6;
+    } else if (termStr.contains('12')) {
+      months = 12;
     }
-    return DateTime(
-      startDate.year,
-      startDate.month + repaymentTerm,
-      startDate.day,
-    );
-  }
-
-  Widget _emptyState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            SizedBox(height: 16),
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    
+    final dueDate = DateTime(startDate.year, startDate.month + months, startDate.day);
+    return dueDate.toString().split(' ')[0];
   }
 
   Widget buttonsAndFiltersRow() {
@@ -471,24 +430,24 @@ class _EncoderReportsState extends State<EncoderReports> {
             } else if (selectedReportType == 'Member Loan Summary') {
               reportData = _memberLoansData;
               reportTitle = 'Member Loan Summary';
-              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'remainBal', 'loanStatus'];
+              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'outBal', 'loanStatus'];
               columnHeaders = {
                 'memName': 'Member Name',
                 'memID': 'Member ID',
                 'totalLoans': 'Total Loans',
                 'totalBorrowed': 'Total Borrowed',
                 'totalPaid': 'Total Paid',
-                'remainBal': 'Remaining Balance',
+                'outBal': 'Outstanding Balance',
                 'loanStatus': 'Status',
               };
             } else if (selectedReportType == 'Payment Collection') {
               reportData = _paymentCollectionData;
               reportTitle = 'Payment Collections Report';
-              columnOrder = ['payDate', 'memName', 'amtPaid', 'payMethod', 'loanID'];
+              columnOrder = ['payDate', 'memName', 'amountPaid', 'payMethod', 'loanID'];
               columnHeaders = {
                 'payDate': 'Payment Date',
                 'memName': 'Member Name',
-                'amtPaid': 'Amount Paid',
+                'amountPaid': 'Amount Paid',
                 'payMethod': 'Payment Method',
                 'loanID': 'Loan ID',
               };
@@ -541,24 +500,24 @@ class _EncoderReportsState extends State<EncoderReports> {
             } else if (selectedReportType == 'Member Loan Summary') {
               reportData = _memberLoansData;
               reportTitle = 'Member Loan Summary';
-              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'remainBal', 'loanStatus'];
+              columnOrder = ['memName', 'memID', 'totalLoans', 'totalBorrowed', 'totalPaid', 'outBal', 'loanStatus'];
               columnHeaders = {
                 'memName': 'Member Name',
                 'memID': 'Member ID',
                 'totalLoans': 'Total Loans',
                 'totalBorrowed': 'Total Borrowed',
                 'totalPaid': 'Total Paid',
-                'remainBal': 'Remaining Balance',
+                'outBal': 'Outstanding Balance',
                 'loanStatus': 'Status',
               };
             } else if (selectedReportType == 'Payment Collection') {
               reportData = _paymentCollectionData;
               reportTitle = 'Payment Collections Report';
-              columnOrder = ['payDate', 'memName', 'amtPaid', 'payMethod', 'loanID'];
+              columnOrder = ['payDate', 'memName', 'amountPaid', 'payMethod', 'loanID'];
               columnHeaders = {
                 'payDate': 'Payment Date',
                 'memName': 'Member Name',
-                'amtPaid': 'Amount Paid',
+                'amountPaid': 'Amount Paid',
                 'payMethod': 'Payment Method',
                 'loanID': 'Loan ID',
               };
@@ -820,102 +779,74 @@ class _EncoderReportsState extends State<EncoderReports> {
     );
   }
 
-  // Show scheduled payments that were not made on time.
-  Widget missedPayTable(List<Map<String, dynamic>> loans) {
-    const boldStyle = TextStyle(fontWeight: FontWeight.bold);
+  // Show income from fees, interest, and voucher-based transactions.
+  Widget voucherRevenueSummary(Map<String, dynamic> data) {
+    if (data.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  sortColumnIndex: sortColumnIndex,
-                  sortAscending: isAscending,
-                  columnSpacing: 58,
-                  columns: [
-                    DataColumn(label: Text("Loan ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "loanID")),
-                    DataColumn(label: Text("Member Name", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "memName")),
-                    DataColumn(label: Text("Due Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dueDate")),
-                    DataColumn(label: Text("Amount Due", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amountDue")),
-                    DataColumn(label: Text("Days Missed", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "daysMissed")),
-                    DataColumn(label: Text("Contact No.", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "contactNo")),
-                    DataColumn(label: Text("Next Pay Date", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "nextPayDate")),
-                  ],
-                  rows: loans.map((loan) {
-                    return DataRow(cells: [
-                      DataCell(Text("${loan["loanID"] ?? "-"}")),
-                      DataCell(Text("${loan["memName"] ?? "-"}")),
-                      DataCell(Text("${loan["dueDate"] ?? "-"}")),
-                      DataCell(Text(ExportService.safeCurrency(loan["amountDue"]))),
-                      DataCell(Text("${loan["daysMissed"] ?? "0"}")),
-                      DataCell(Text("${loan["contactNo"] ?? "-"}")),
-                      DataCell(Text("${loan["nextPayDate"] ?? "-"}")),
-                    ]);
-                  }).toList(),
-                ),
-              ),
-            ),
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Financial Summary',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          _summaryRow('Total Loans Approved', data['totalLoansApproved'] ?? '0'),
+          _summaryRow('Total Disbursed Amount', ExportService.safeCurrency(data['totalDisbursed'])),
+          _summaryRow('Total Payments Received', ExportService.safeCurrency(data['totalPaymentsReceived'])),
+          _summaryRow('Total Amount Paid', ExportService.safeCurrency(data['totalAmountPaid'])),
+          _summaryRow('Outstanding Balances', ExportService.safeCurrency(data['totalOutstanding'])),
+          _summaryRow('Total Overdue Amounts', ExportService.safeCurrency(data['totalOverdue'])),
+          _summaryRow('Total Interest Earned', ExportService.safeCurrency(data['totalInterestEarned'])),
+        ],
       ),
     );
   }
 
-  // Show income from fees, interest, and voucher-based transactions.
-  Widget voucherRevenueTable(List<Map<String, dynamic>> loans) {
-    const boldStyle = TextStyle(fontWeight: FontWeight.bold);
-
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+  Widget _summaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  sortColumnIndex: sortColumnIndex,
-                  sortAscending: isAscending,
-                  columnSpacing: 58,
-                  columns: [
-                    DataColumn(label: Text("Voucher ID", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "voucherID")),
-                    DataColumn(label: Text("Date Issued", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "dateIssued")),
-                    DataColumn(label: Text("Description", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "desc")),
-                    DataColumn(label: Text("Amount Earned", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "amtEarned")),
-                    DataColumn(label: Text("Revenue Type", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "revType")),
-                    DataColumn(label: Text("Recorded By", style: boldStyle), onSort: (i, asc) => onSort(i, asc, loans, "recordedBy")),
-                  ],
-                  rows: loans.map((loan) {
-                    return DataRow(cells: [
-                      DataCell(Text("${loan["voucherID"] ?? "-"}")),
-                      DataCell(Text("${loan["dateIssued"] ?? "-"}")),
-                      DataCell(Text("${loan["desc"] ?? "-"}")),
-                      DataCell(Text(ExportService.safeCurrency(loan["amtEarned"]))),
-                      DataCell(Text("${loan["revType"] ?? "-"}")),
-                      DataCell(Text("${loan["recordedBy"] ?? "-"}")),
-                    ]);
-                  }).toList(),
-                ),
-              ),
-            ),
-          );
-        },
+    );
+  }
+
+  Widget _emptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            CupertinoIcons.exclamationmark_circle,
+            size: 64,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -991,28 +922,28 @@ class _EncoderReportsState extends State<EncoderReports> {
                                     children: [
                                       
                                       // main table (sorting by time period not yet implemented)
-                                      if (selectedReportType == "Active Loans")
+                                      if (_isLoading)
+                                        const Center(child: CircularProgressIndicator())
+                                      else if (selectedReportType == "Active Loans")
                                         _activeLoansData.isEmpty 
                                           ? _emptyState('No active loans found')
                                           : activeLoansTable(_activeLoansData)
                                       else if (selectedReportType == "Overdue Loans")
-                                        _overdueLoansData.isEmpty 
+                                        _overdueLoansData.isEmpty
                                           ? _emptyState('No overdue loans found')
                                           : overdueLoansTable(_overdueLoansData)
                                       else if (selectedReportType == "Member Loan Summary")
-                                        _memberLoansData.isEmpty 
+                                        _memberLoansData.isEmpty
                                           ? _emptyState('No member loan data found')
                                           : memberLoansTable(_memberLoansData)
                                       else if (selectedReportType == "Payment Collection")
-                                        _paymentCollectionData.isEmpty 
+                                        _paymentCollectionData.isEmpty
                                           ? _emptyState('No payment collections found')
                                           : payCollectionTable(_paymentCollectionData)
                                       else if (selectedReportType == "Missed Payments")
-                                        _emptyState('Missed payments feature coming soon')
+                                        _emptyState('Missed Payments feature coming soon')
                                       else if (selectedReportType == "Voucher & Revenue Summary")
-                                        _voucherRevenueData.isEmpty 
-                                          ? _emptyState('No revenue data found')
-                                          : voucherRevenueTable(_voucherRevenueData)
+                                        voucherRevenueSummary(_voucherRevenueData.isNotEmpty ? _voucherRevenueData : {})
                                       else
                                         Column(
                                           mainAxisAlignment: MainAxisAlignment.center,

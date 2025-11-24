@@ -31,119 +31,173 @@ class _MemDBState extends State<EncoderLoanPayRec> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     await Future.wait([
       _fetchLoans(),
       _fetchPayments(),
     ]);
-    setState(() => _isLoading = false);
+    debugPrint('[EncoderLoanPayRec] after _loadData loans=${loans.length}, payments=${payments.length}');
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _fetchLoans() async {
     try {
+      // Use explicit select to fetch member fields (avoids extra queries and RLS issues)
       final response = await Supabase.instance.client
           .from('approved_loans')
-          .select('*')
+          .select('application_id, member_id, member_first_name, member_last_name, loan_amount, created_at, outstanding_balance, status, repayment_term, installment')
           .order('created_at', ascending: false);
 
-      final List<Map<String, dynamic>> fetchedLoans = [];
-      
-      for (var loan in response) {
-        final memberId = loan['member_id'];
-        String memberName = 'Unknown Member';
-        
-        if (memberId != null) {
-          final memberResponse = await Supabase.instance.client
-              .from('members')
-              .select('first_name, last_name')
-              .eq('id', memberId)
-              .maybeSingle();
-          
-          if (memberResponse != null) {
-            memberName = '${memberResponse['first_name']} ${memberResponse['last_name']}';
-          }
-        }
+      debugPrint('[EncoderLoanPayRec] _fetchLoans raw response type: ${response.runtimeType}');
 
-        final createdAt = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final year = createdAt.year;
-        final loanId = 'LN-$year-${loan['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
+      final List<dynamic> data = List<dynamic>.from(response);
 
-        final startDate = loan['created_at'] != null 
-            ? DateTime.parse(loan['created_at']) 
-            : DateTime.now();
-        final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+      debugPrint('[EncoderLoanPayRec] _fetchLoans returned ${data.length} rows');
 
-        fetchedLoans.add({
-          'ref': loanId,
-          'memName': memberName,
-          'amt': loan['loan_amount'] ?? 0,
-          'interest': loan['interest_rate'] ?? 0,
-          'start': startDate.toString().split(' ')[0],
-          'due': dueDate.toString().split(' ')[0],
-          'instType': loan['repayment_term'] != null ? '${loan['repayment_term']} months' : 'N/A',
-          'totalInst': loan['repayment_term'] ?? 0,
-          'instAmt': loan['repayment_term'] != null && loan['repayment_term'] > 0
-              ? ((loan['loan_amount'] ?? 0) / loan['repayment_term']).toStringAsFixed(2)
-              : '0.00',
-          'status': loan['status'] ?? 'unknown',
-        });
+      // Batch collect member ids so we can fetch member names if the loan rows don't include them
+      final Set<int> memberIds = {};
+      for (final loan in data) {
+        try {
+          if (loan != null && loan['member_id'] != null) memberIds.add(loan['member_id'] as int);
+        } catch (_) {}
       }
 
-      setState(() {
-        loans = fetchedLoans;
-      });
+      Map<int, String> memberNames = {};
+      if (memberIds.isNotEmpty) {
+        try {
+          debugPrint('[EncoderLoanPayRec] Fetching member names for ids: $memberIds');
+          final membersResp = await Supabase.instance.client
+              .from('members')
+              .select('id, first_name, last_name')
+              .inFilter('id', memberIds.toList());
+          for (final m in membersResp as List<dynamic>) {
+            memberNames[m['id'] as int] = '${m['first_name'] ?? ''} ${m['last_name'] ?? ''}'.trim();
+          }
+        } catch (e) {
+          debugPrint('[EncoderLoanPayRec] Error fetching members: $e');
+        }
+      }
+
+      final List<Map<String, dynamic>> fetchedLoans = [];
+      for (var i = 0; i < data.length; i++) {
+        final loan = data[i];
+        try {
+          debugPrint('[EncoderLoanPayRec] row[$i] preview: $loan');
+        } catch (_) {}
+
+        try {
+          final appId = loan['application_id'] ?? 0;
+          final createdAt = loan['created_at'] != null ? DateTime.parse(loan['created_at']) : DateTime.now();
+          final loanId = 'LN-${createdAt.year}-${appId.toString().padLeft(4, '0')}';
+          final startDate = createdAt;
+          final dueDate = _calculateDueDate(startDate, loan['repayment_term']);
+
+          String memName = '';
+          try {
+            memName = '${loan['member_first_name'] ?? ''} ${loan['member_last_name'] ?? ''}'.trim();
+          } catch (_) {
+            memName = '';
+          }
+          if (memName.isEmpty && loan['member_id'] != null) {
+            final lookup = memberNames[loan['member_id'] as int];
+            if (lookup != null && lookup.isNotEmpty) memName = lookup;
+          }
+
+          final repaymentMonths = _repaymentTermToMonths(loan['repayment_term']);
+
+          fetchedLoans.add({
+            'ref': loanId,
+            'memName': memName.isNotEmpty ? memName : 'Unknown Member',
+            'amt': (loan['loan_amount'] ?? 0),
+            'interest': 0,
+            'start': startDate.toString().split(' ')[0],
+            'due': dueDate.toString().split(' ')[0],
+            'instType': loan['repayment_term'] != null ? loan['repayment_term'].toString() : 'N/A',
+            'totalInst': repaymentMonths ?? 0,
+            'instAmt': (repaymentMonths != null && repaymentMonths > 0)
+                ? ((loan['loan_amount'] ?? 0) / repaymentMonths).toString()
+                : '0.00',
+            'status': loan['status'] ?? 'unknown',
+          });
+        } catch (e, st) {
+          debugPrint('[EncoderLoanPayRec] Error mapping row $i: $e');
+          debugPrint(st.toString());
+        }
+      }
+
+      debugPrint('[EncoderLoanPayRec] _fetchLoans mapped ${fetchedLoans.length} loans');
+      if (mounted) setState(() => loans = fetchedLoans);
     } catch (e) {
       print('Error fetching loans: $e');
-      setState(() {
-        loans = [];
-      });
+      if (mounted) {
+        setState(() {
+          loans = [];
+        });
+      }
     }
   }
 
   Future<void> _fetchPayments() async {
     try {
+      // Select specific payment fields and include nested approved_loans to get member info
       final response = await Supabase.instance.client
           .from('payments')
-          .select('*')
+          .select('''
+            payment_id,
+            approved_loan_id,
+            staff_id,
+            amount,
+            payment_date,
+            installment_number,
+            payment_type,
+            gcash_reference,
+            gcash_screenshot_path,
+            bank_name,
+            bank_deposit_date,
+            status,
+            approved_loans(application_id, member_id, member_first_name, member_last_name, repayment_term)
+          ''')
           .order('payment_date', ascending: false);
 
+      final List<dynamic> data = response as List<dynamic>;
       final List<Map<String, dynamic>> fetchedPayments = [];
-      
-      for (var payment in response) {
-        final loanId = payment['loan_id'];
-        String loanRef = 'Unknown';
-        
-        if (loanId != null) {
-          final loanResponse = await Supabase.instance.client
-              .from('approved_loans')
-              .select('application_id, created_at')
-              .eq('loan_id', loanId)
-              .maybeSingle();
-          
-          if (loanResponse != null) {
-            final createdAt = loanResponse['created_at'] != null 
-                ? DateTime.parse(loanResponse['created_at']) 
-                : DateTime.now();
-            final year = createdAt.year;
-            loanRef = 'LN-$year-${loanResponse['application_id']?.toString().padLeft(4, '0') ?? '0000'}';
-          }
+
+      // Fetch staff names for any staff_id present
+      final staffIds = data.map((p) => p['staff_id']).where((id) => id != null).toSet().toList();
+      Map<int, String> staffNames = {};
+      if (staffIds.isNotEmpty) {
+        final staffResp = await Supabase.instance.client
+            .from('staff')
+            .select('id, first_name, last_name')
+            .inFilter('id', staffIds);
+        for (final s in staffResp as List<dynamic>) {
+          staffNames[s['id']] = '${s['first_name']} ${s['last_name']}';
         }
+      }
+
+      for (final payment in data) {
+        final loanData = payment['approved_loans'];
 
         fetchedPayments.add({
-          'paymentId': payment['payment_id']?.toString() ?? 'N/A',
-          'loanRef': loanRef,
+          'payment_id': (payment['payment_id'] ?? 0).toString(),
+          'approved_loan_id': loanData != null ? (loanData['application_id'] ?? '-') : '-',
+          'memName': loanData != null ? '${loanData['member_first_name'] ?? ''} ${loanData['member_last_name'] ?? ''}'.trim() : '-',
+          'memID': loanData != null ? (loanData['member_id'] ?? '-').toString() : '-',
+          'loanID': loanData != null ? 'LN-${DateTime.now().year}-${(loanData['application_id'] ?? 0).toString().padLeft(4, '0')}' : '-',
+          'payment_date': payment['payment_date'] != null ? DateTime.parse(payment['payment_date']).toString().split(' ')[0] : '-',
+          'payment_type': payment['payment_type'] ?? payment['payment_method'] ?? '-',
           'amount': payment['amount'] ?? 0,
-          'paymentDate': payment['payment_date'] ?? 'N/A',
-          'method': payment['payment_method'] ?? 'N/A',
-          'status': payment['status'] ?? 'pending',
+          'installment_number': payment['installment_number'] ?? payment['installmentNo'] ?? '-',
+          'gcash_reference': payment['gcash_reference'] ?? '',
+          'bank_name': payment['bank_name'] ?? '',
+          'status': payment['status'] ?? '',
+          'collectedBy': payment['staff_id'] != null ? (staffNames[payment['staff_id']] ?? 'Staff #${payment['staff_id']}') : 'Online',
         });
       }
 
       setState(() {
         payments = fetchedPayments;
-        filteredPayments = fetchedPayments;
+        filteredPayments = List.from(fetchedPayments);
       });
     } catch (e) {
       print('Error fetching payments: $e');
@@ -154,15 +208,32 @@ class _MemDBState extends State<EncoderLoanPayRec> {
     }
   }
 
-  DateTime _calculateDueDate(DateTime startDate, int? repaymentTerm) {
-    if (repaymentTerm == null || repaymentTerm == 0) {
-      return startDate.add(Duration(days: 30));
-    }
-    return DateTime(
-      startDate.year,
-      startDate.month + repaymentTerm,
-      startDate.day,
-    );
+  int? _repaymentTermToMonths(dynamic repaymentTerm) {
+    if (repaymentTerm == null) return null;
+    if (repaymentTerm is int) return repaymentTerm;
+    if (repaymentTerm is num) return repaymentTerm.toInt();
+
+    final s = repaymentTerm.toString().toLowerCase().trim();
+    // direct integer like "3" or "3 months"
+    final direct = int.tryParse(s);
+    if (direct != null) return direct;
+
+    final digitMatch = RegExp(r"(\d+)").firstMatch(s);
+    if (digitMatch != null) return int.tryParse(digitMatch.group(1)!);
+
+    if (s.contains('monthly')) return 1;
+    if (s.contains('bimonth') || s.contains('bimonthly')) return 2;
+    if (s.contains('quarter')) return 3;
+    if (s.contains('semi')) return 6;
+    if (s.contains('12') || s.contains('year') || s.contains('annual')) return 12;
+
+    return null;
+  }
+
+  DateTime _calculateDueDate(DateTime startDate, dynamic repaymentTerm) {
+    final months = _repaymentTermToMonths(repaymentTerm);
+    if (months == null || months == 0) return startDate.add(Duration(days: 30));
+    return DateTime(startDate.year, startDate.month + months, startDate.day);
   }
 
   void onSort<T>(
@@ -264,7 +335,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
               ),
               readOnly: true,
               onTap: () async {
-                DateTime? picked = await showDatePicker(
+                await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
                   firstDate: DateTime(2000),
@@ -289,7 +360,7 @@ class _MemDBState extends State<EncoderLoanPayRec> {
               ),
               readOnly: true,
               onTap: () async {
-                DateTime? picked = await showDatePicker(
+                await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
                   firstDate: DateTime(2000),
@@ -727,6 +798,11 @@ class _MemDBState extends State<EncoderLoanPayRec> {
                                     children: [
                                       loanFilters(),
                                       SizedBox(height: 24),
+                                      // Diagnostic: show how many loans were loaded (helps detect RLS/filtering)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 8.0, left: 8.0),
+                                        child: Text('Loaded loans: ${loans.length}', style: TextStyle(color: Colors.grey)),
+                                      ),
                                       loansTable(loans)
                                     ],
                                   ),

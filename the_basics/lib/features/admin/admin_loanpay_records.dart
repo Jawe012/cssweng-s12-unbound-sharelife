@@ -78,7 +78,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
           'ref': loanId,
           'memName': memberName,
           'amt': loan['loan_amount'] ?? 0,
-          'interest': loan['interest_rate'] ?? 0,
+          'interest': 0,
           'start': startDate.toString().split(' ')[0],
           'due': dueDate.toString().split(' ')[0],
           'instType': loan['repayment_term'] != null ? '${loan['repayment_term']} months' : 'N/A',
