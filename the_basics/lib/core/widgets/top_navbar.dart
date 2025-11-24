@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class TopNavBar extends StatefulWidget {
   final String splash;
@@ -40,7 +41,7 @@ class _TopNavBarState extends State<TopNavBar> {
       height: 80,
       padding: EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-  color: Colors.white,
+  color: AppThemes.topnavContainer,
   boxShadow: [
     BoxShadow(
       color: Colors.grey.withOpacity(0.5),
@@ -51,7 +52,7 @@ class _TopNavBarState extends State<TopNavBar> {
   ],
   border: Border(
     bottom: BorderSide(
-      color: Colors.grey,
+      color: AppThemes.lines,
       width: 0.5,
     ),
   ),
@@ -67,7 +68,7 @@ class _TopNavBarState extends State<TopNavBar> {
           MenuOptions(),
           IconButton(
             tooltip: "Notifications",
-            icon: const Icon(Icons.notifications_outlined, size: 28, color: Colors.black),
+            icon: const Icon(Icons.notifications_outlined, size: 28, color: AppThemes.topnavIcons),
             onPressed: () {
               Navigator.pushNamed(context, '/notifications');
             },
@@ -128,14 +129,14 @@ class SideMenuBtn extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: Colors.black,
+                color: AppThemes.topnavName,
               ),
             ),
             Text(
               splash,  // Display the splash value
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: AppThemes.topnavRole,
               ),
             ),
           ],

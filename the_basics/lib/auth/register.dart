@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/auth/auth_service.dart';
 import 'package:the_basics/auth/login.dart';
 import 'package:the_basics/core/widgets/auth_navbar.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -169,8 +170,14 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_out.png"),
+        fit: BoxFit.fill,
+      ),
+    ),
+    child: Column(
         children: [
           const AuthNavBar(),
           Expanded(
@@ -397,6 +404,7 @@ class _RegisterPageState extends State<RegisterPage> {
     ),
   ],
       ),
+    )
     );
   }
 }

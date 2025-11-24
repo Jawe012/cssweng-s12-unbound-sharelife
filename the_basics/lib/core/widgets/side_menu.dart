@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:the_basics/core/utils/themes.dart';
+import 'package:the_basics/core/widgets/side_menu_item.dart';
 
 class SideMenu extends StatelessWidget {
   final String role; // member, admin, encoder
@@ -10,9 +12,9 @@ class SideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero
-        ),
-      backgroundColor: Colors.white,
+        borderRadius: BorderRadius.zero,
+      ),
+      backgroundColor: AppThemes.sidenavContainer,
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -24,172 +26,127 @@ class SideMenu extends StatelessWidget {
 
   List<Widget> _buildMenuItems(BuildContext context) {
     switch (role) {
+
+      // ================= SETTINGS =================
       case "Settings":
         return [
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text("Personal Info"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/profile-page');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.person),
+            title: "Personal Info",
+            routeName: '/profile-page',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text("Account Settings"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/account-options');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.settings),
+            title: "Account Settings",
+            routeName: '/account-options',
           ),
         ];
 
+      // ================= ADMIN =================
       case "Admin":
         return [
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.people),
-            title: const Text("Staff Management"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-dash');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.people),
+            title: "Staff Management",
+            routeName: '/admin-dash',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.checklist_rtl),
-            title: const Text("Loan Application Review"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-loanreview');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.checklist_rtl),
+            title: "Loan Application Review",
+            routeName: '/admin-loanreview',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: Image.asset(
-                    'assets/icons/php-icon.png',
-                    width: 20,
-                    height: 20,
-                  ),
-            title: const Text("Payment Form Review"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-payment-review');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: ImageIcon(AssetImage('assets/icons/php-icon.png')),
+            title: "Payment Form Review",
+            routeName: '/admin-payment-review',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.receipt_long_sharp),
-            title: const Text("Voucher Search & Generation"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-finance');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.receipt_long_sharp),
+            title: "Voucher Search & Generation",
+            routeName: '/admin-finance',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text("Reports Dashboard"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-reports');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.bar_chart),
+            title: "Reports Dashboard",
+            routeName: '/admin-reports',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text("Loan and Payment Records"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/admin-loanpay-rec');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.folder),
+            title: "Loan and Payment Records",
+            routeName: '/admin-loanpay-rec',
           ),
         ];
 
+      // ================= ENCODER =================
       case "Encoder":
         return [
-          SizedBox(height: 10),
-          ListTile(
+          const SizedBox(height: 10),
+          const SideMenuItem(
             leading: Icon(Icons.query_stats),
-            title: const Text("Dashboard"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-dash');
-            },
+            title: "Dashboard",
+            routeName: '/encoder-dash',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(CupertinoIcons.pencil),
-            title: const Text("Encode Loan Applications"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-appliform');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(CupertinoIcons.pencil),
+            title: "Encode Loan Applications",
+            routeName: '/encoder-appliform',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: Image.asset(
-                    'assets/icons/php-icon.png',
-                    width: 20,
-                    height: 20,
-                  ),
-            title: const Text("Encode Payment Forms"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-payment');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: ImageIcon(AssetImage('assets/icons/php-icon.png')),
+            title: "Encode Payment Forms",
+            routeName: '/encoder-payment',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text("Reports Dashboard"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-report');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.bar_chart),
+            title: "Reports Dashboard",
+            routeName: '/encoder-report',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text("Loan and Payment Records"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/encoder-loanpay-rec');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.folder),
+            title: "Loan and Payment Records",
+            routeName: '/encoder-loanpay-rec',
           ),
         ];
 
+      // ================= MEMBER =================
       case "Member":
       default:
         return [
-          SizedBox(height: 10),
-          ListTile(
-            leading: Image.asset(
-                    'assets/icons/loan_icon.png',
-                    width: 24,
-                    height: 24,
-                  ),
-            title: const Text("My Loans"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/member-dash');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: ImageIcon(AssetImage('assets/icons/loan_icon.png')),
+            title: "My Loans",
+            routeName: '/member-dash',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: const Text("My Payments"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/member-payment-history');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(Icons.receipt_long),
+            title: "My Payments",
+            routeName: '/member-payment-history',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: const Icon(CupertinoIcons.pencil),
-            title: const Text("Apply for Loan"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/member-appliform');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: Icon(CupertinoIcons.pencil),
+            title: "Apply for Loan",
+            routeName: '/member-appliform',
           ),
-          SizedBox(height: 10),
-          ListTile(
-            leading: Image.asset(
-                    'assets/icons/php-icon.png',
-                    width: 20,
-                    height: 20,
-                  ),
-            title: const Text("Pay for Loan"),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/member-payment');
-            },
+          const SizedBox(height: 10),
+          const SideMenuItem(
+            leading: ImageIcon(AssetImage('assets/icons/php-icon.png')),
+            title: "Pay for Loan",
+            routeName: '/member-payment',
           ),
         ];
     }
