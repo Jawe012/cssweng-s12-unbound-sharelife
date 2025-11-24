@@ -26,15 +26,15 @@ class _EncoderDashboardState extends State<EncoderDashboard> {
   }
 
   Future<void> _loadStatistics() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
 
     try {
       final supabase = Supabase.instance.client;
 
-      // Get current encoder's staff ID
+      // Get current encoder's staff ID (not strictly required for counts but keep check)
       final currentUser = supabase.auth.currentUser;
       if (currentUser == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -43,7 +43,7 @@ class _EncoderDashboardState extends State<EncoderDashboard> {
           .from('loan_application')
           .select('application_id')
           .eq('status', 'Pending');
-      
+
       // Fetch approved applications from approved_loans
       final approvedResp = await supabase
           .from('approved_loans')
@@ -54,17 +54,35 @@ class _EncoderDashboardState extends State<EncoderDashboard> {
           .from('loan_application')
           .select('application_id');
 
-      setState(() {
-        _pendingApplications = pendingResp.length;
-        _pendingApproval = pendingResp.length; // Same as pending for now
-        _approvedApplications = approvedResp.length;
-        _totalEncodedApplications = totalResp.length;
-        _isLoading = false;
-      });
+      // defensive counts: responses sometimes aren't Lists on error
+      int pendingCount = 0;
+      int approvedCount = 0;
+      int totalCount = 0;
 
+      try {
+        pendingCount = (pendingResp as List).length;
+      } catch (_) {}
+      try {
+        approvedCount = (approvedResp as List).length;
+      } catch (_) {}
+      try {
+        totalCount = (totalResp as List).length;
+      } catch (_) {}
+
+      debugPrint('[EncoderDashboard] counts -> pending: $pendingCount, approved: $approvedCount, total: $totalCount');
+
+      if (mounted) {
+        setState(() {
+          _pendingApplications = pendingCount;
+          _pendingApproval = pendingCount; // Same as pending for now
+          _approvedApplications = approvedCount;
+          _totalEncodedApplications = totalCount;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('[EncoderDashboard] Error loading statistics: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
