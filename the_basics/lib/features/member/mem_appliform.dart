@@ -577,7 +577,7 @@ class _MemAppliformState extends State<MemAppliform> {
               labelText: 'Date of Application',
             ),
             readOnly: true,
-            enabled: false,
+            enabled: true,
           ),
         ),
       ],

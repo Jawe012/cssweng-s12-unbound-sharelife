@@ -708,7 +708,7 @@ class _EncAppliformState extends State<EncAppliform> {
               labelText: 'Date of Application',
             ),
             readOnly: true,
-            enabled: false,
+            enabled: true,
           ),
         ),
       ],
