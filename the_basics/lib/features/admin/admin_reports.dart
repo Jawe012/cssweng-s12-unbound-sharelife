@@ -134,9 +134,9 @@ class _AdminReportsState extends State<AdminReports> {
     setState(() => _isLoading = true);
     try {
       // Fetch all approved loans grouped by member
-      final response = await _supabase
+        final response = await _supabase
           .from('approved_loans')
-          .select('member_id, member_first_name, member_last_name, loan_amount, amount_paid, outstanding_balance, status, created_at');
+          .select('application_id, member_id, member_first_name, member_last_name, loan_amount, amount_paid, outstanding_balance, status, created_at');
 
       final List<dynamic> data = response as List<dynamic>;
       
@@ -172,6 +172,20 @@ class _AdminReportsState extends State<AdminReports> {
           num outstandingBalance = 0;
           String lastPaymentDate = '-';
           String loanStatus = 'active';
+          // Find the most recent payment date for this member across their loans
+          DateTime? latest;
+          for (final loan in loans) {
+            final loanId = loan['application_id'];
+            if (loanId == null) continue;
+            final lp = lastPaymentDates[loanId as int];
+            if (lp == null || lp.toString().isEmpty) continue;
+            final parsed = DateTime.tryParse(lp.toString());
+            if (parsed == null) continue;
+            if (latest == null || parsed.isAfter(latest)) latest = parsed;
+          }
+          if (latest != null) {
+            lastPaymentDate = latest.toString().split(' ')[0];
+          }
           
           for (final loan in loans) {
             totalBorrowed += (loan['loan_amount'] ?? 0) as num;

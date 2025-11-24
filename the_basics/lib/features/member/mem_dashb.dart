@@ -390,7 +390,7 @@ class _MemDBState extends State<MemberDB> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Ref. No.",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -411,7 +411,7 @@ class _MemDBState extends State<MemberDB> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Start Date",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -438,7 +438,7 @@ class _MemDBState extends State<MemberDB> {
             style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "End Date",
-              labelStyle: TextStyle(color: AppThemes.authFieldName),
+              labelStyle: TextStyle(color: AppThemes.searchButton),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -685,7 +685,14 @@ class _MemDBState extends State<MemberDB> {
 
     return Scaffold(
       backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
+          )
+        ),
+        child: Column(
         children: [
           // top nav bar
           TopNavBar(splash: "Member"),
@@ -744,6 +751,8 @@ class _MemDBState extends State<MemberDB> {
           ),
         ],
       ),
+      ),
+      
     );
   }
 }

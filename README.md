@@ -17,7 +17,7 @@
     
     __Member__  
     `email: namh.b1l6@gmail.com`  
-    `password: password`
+    `password: Asdf1234*`
 
     __Encoder__  
     `email: namh.akashax@gmail.com`  

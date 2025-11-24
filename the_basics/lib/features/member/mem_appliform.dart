@@ -978,7 +978,14 @@ class _MemAppliformState extends State<MemAppliform> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
+          )
+        ),
+        child: Column(
         children: [
 
           // top nav bar
@@ -1142,6 +1149,8 @@ class _MemAppliformState extends State<MemAppliform> {
           ),
         ],
       ),
+      ),
+      
       
     );
   }

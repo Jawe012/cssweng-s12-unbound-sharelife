@@ -60,6 +60,31 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
     }
   }
 
+  // Normalize various return shapes from Supabase storage.getPublicUrl
+  String? _extractPublicUrl(dynamic obj) {
+    if (obj == null) return null;
+    if (obj is String) return obj;
+    try {
+      if (obj is Map) {
+        if (obj.containsKey('publicUrl')) return obj['publicUrl']?.toString();
+        if (obj.containsKey('publicURL')) return obj['publicURL']?.toString();
+        if (obj.containsKey('url')) return obj['url']?.toString();
+        if (obj.containsKey('data')) {
+          final data = obj['data'];
+          if (data is Map) {
+            if (data.containsKey('publicUrl')) return data['publicUrl']?.toString();
+            if (data.containsKey('publicURL')) return data['publicURL']?.toString();
+            if (data.containsKey('url')) return data['url']?.toString();
+          }
+        }
+        for (final v in obj.values) {
+          if (v is String && v.contains('http')) return v;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> fetchPaymentDetails(int id) async {
     setState(() => _isLoading = true);
     
@@ -206,16 +231,18 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
       paymentUpdates['date_reviewed'] = DateTime.now().toIso8601String();
       if (reviewerId != null) paymentUpdates['reviewed_by'] = reviewerId;
 
-      // Update payment status and metadata
-      await Supabase.instance.client
+        // Update payment status and metadata; request the updated row for diagnostics
+        final paymentUpdateResp = await Supabase.instance.client
           .from('payments')
           .update(paymentUpdates)
-          .eq('payment_id', paymentId);
+          .eq('payment_id', paymentId)
+          .select();
+        debugPrint('[AdminPaymentDetails] payment update response: $paymentUpdateResp');
 
       if (!mounted) return;
 
       // If payment was validated, apply it to the approved loan balance
-      if (newStatus == 'Validated') {
+      if (newStatus.toString().toLowerCase() == 'validated' || newStatus.toString().toLowerCase() == 'approved') {
         try {
           // Fetch the current loan record
           final loanResp = await Supabase.instance.client
@@ -224,37 +251,46 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
               .eq('application_id', loanId)
               .maybeSingle();
 
-          if (loanResp != null) {
+            if (loanResp != null) {
             // Parse numeric values safely
             final currentPaid = (loanResp['amount_paid'] ?? 0) as num;
             final loanAmount = (loanResp['loan_amount'] ?? 0) as num;
             final paymentAmount = amount as num;
-            final newAmountPaid = currentPaid + paymentAmount;
-            final newOutstanding = (loanAmount - newAmountPaid).toDouble();
+
+            // Compute new paid amount and cap it at loan amount to avoid negative outstanding
+            final newAmountPaid = (currentPaid + paymentAmount).toDouble();
+            final cappedAmountPaid = newAmountPaid > loanAmount ? loanAmount.toDouble() : newAmountPaid;
+            final remaining = (loanAmount - cappedAmountPaid).toDouble();
+            final finalOutstanding = remaining < 0 ? 0.0 : remaining;
 
             final Map<String, dynamic> updates = {
-              'amount_paid': newAmountPaid,
-              'outstanding_balance': newOutstanding,
+              'amount_paid': cappedAmountPaid,
+              'outstanding_balance': finalOutstanding,
             };
 
-            // If fully paid or negative outstanding, mark as Paid
-            if (newOutstanding <= 0) {
+            // If fully paid, mark as Paid and ensure outstanding is zero
+            if (finalOutstanding <= 0) {
               updates['status'] = 'Paid';
+              updates['outstanding_balance'] = 0;
             }
 
-            await Supabase.instance.client
-                .from('approved_loans')
-                .update(updates)
-                .eq('application_id', loanId);
+            final loanUpdateResp = await Supabase.instance.client
+              .from('approved_loans')
+              .update(updates)
+              .eq('application_id', loanId)
+              .select();
+            debugPrint('[AdminPaymentDetails] approved_loans update response: $loanUpdateResp');
 
             // If loan now Paid, clear member.has_loan
-            if (newOutstanding <= 0) {
+            if (finalOutstanding <= 0) {
               final memberId = loanResp['member_id'];
               if (memberId != null) {
-                await Supabase.instance.client
+                final memberUpdateResp = await Supabase.instance.client
                     .from('members')
                     .update({'has_loan': false})
-                    .eq('id', memberId);
+                    .eq('id', memberId)
+                    .select();
+                debugPrint('[AdminPaymentDetails] members update response: $memberUpdateResp');
               }
             }
           }
@@ -417,52 +453,72 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                   if (gcashScreenshotPath != null)
                     InkWell(
                       onTap: () async {
-                        try {
+                          try {
                           // Get public URL from storage
-                          final publicUrl = Supabase.instance.client.storage
-                              .from('payment_receipts')
-                              .getPublicUrl(gcashScreenshotPath!);
-                          
+                          final publicUrlRaw = Supabase.instance.client.storage
+                            .from('payment_receipts')
+                            .getPublicUrl(gcashScreenshotPath!);
+
+                          // Debugging: print returned value and type
+                          debugPrint('[AdminPaymentDetails] getPublicUrl(path=$gcashScreenshotPath) returned: $publicUrlRaw (type: ${publicUrlRaw.runtimeType})');
+
+                          final String imageUrl = _extractPublicUrl(publicUrlRaw) ?? publicUrlRaw.toString();
+                          debugPrint('[AdminPaymentDetails] resolved imageUrl: $imageUrl (type: ${imageUrl.runtimeType})');
+
+                          if (imageUrl.isEmpty) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not resolve screenshot URL')),
+                              );
+                            }
+                            return;
+                          }
+
                           // Show image in dialog
                           if (mounted) {
                             showDialog(
                               context: context,
                               builder: (context) => Dialog(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    AppBar(
-                                      title: const Text('GCash Screenshot'),
-                                      automaticallyImplyLeading: false,
-                                      actions: [
-                                        IconButton(
-                                          icon: const Icon(Icons.close),
-                                          onPressed: () => Navigator.pop(context),
-                                        ),
-                                      ],
-                                    ),
-                                    Expanded(
-                                      child: InteractiveViewer(
-                                        child: Image.network(
-                                          publicUrl,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Center(
-                                              child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(Icons.error, size: 48, color: Colors.red),
-                                                  SizedBox(height: 16),
-                                                  Text('Failed to load image'),
-                                                  SizedBox(height: 8),
-                                                  Text(publicUrl, style: TextStyle(fontSize: 12)),
-                                                ],
-                                              ),
-                                            );
-                                          },
+                                child: SizedBox(
+                                  width: double.maxFinite,
+                                  height: MediaQuery.of(context).size.height * 0.75,
+                                  child: Column(
+                                    children: [
+                                      AppBar(
+                                        title: const Text('GCash Screenshot'),
+                                        automaticallyImplyLeading: false,
+                                        actions: [
+                                          IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () => Navigator.pop(context),
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(
+                                        child: InteractiveViewer(
+                                          child: Image.network(
+                                            imageUrl,
+                                            width: double.infinity,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return Center(
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(Icons.error, size: 48, color: Colors.red),
+                                                    SizedBox(height: 16),
+                                                    Text('Failed to load image'),
+                                                    SizedBox(height: 8),
+                                                    Text(imageUrl, style: TextStyle(fontSize: 12)),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
