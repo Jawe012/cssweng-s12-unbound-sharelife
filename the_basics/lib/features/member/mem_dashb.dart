@@ -689,6 +689,7 @@ class _MemDBState extends State<MemberDB> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
           )
         ),
         child: Column(

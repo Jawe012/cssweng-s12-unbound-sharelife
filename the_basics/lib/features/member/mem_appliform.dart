@@ -982,6 +982,7 @@ class _MemAppliformState extends State<MemAppliform> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
           )
         ),
         child: Column(
