@@ -32,6 +32,35 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
     _fetchPaymentHistory();
   }
 
+  // Helper to extract a usable URL string from various return shapes of
+  // Supabase storage getPublicUrl() (some versions/clients may return a String
+  // while others return a Map-like object). Returns null if no URL can be derived.
+  String? _extractPublicUrl(dynamic obj) {
+    if (obj == null) return null;
+    if (obj is String) return obj;
+    try {
+      if (obj is Map) {
+        // Common shapes: {'publicUrl': '...'} or {'publicURL': '...'} or { 'data': { 'publicUrl': '...' }}
+        if (obj.containsKey('publicUrl')) return obj['publicUrl']?.toString();
+        if (obj.containsKey('publicURL')) return obj['publicURL']?.toString();
+        if (obj.containsKey('url')) return obj['url']?.toString();
+        if (obj.containsKey('data')) {
+          final data = obj['data'];
+          if (data is Map) {
+            if (data.containsKey('publicUrl')) return data['publicUrl']?.toString();
+            if (data.containsKey('publicURL')) return data['publicURL']?.toString();
+            if (data.containsKey('url')) return data['url']?.toString();
+          }
+        }
+        // Last resort: pick the first string value found
+        for (final v in obj.values) {
+          if (v is String && v.contains('http')) return v;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _fetchPaymentHistory() async {
     setState(() => isLoading = true);
 
@@ -525,47 +554,67 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
     if (path == null) return;
     
     try {
-      final publicUrl = Supabase.instance.client.storage
-          .from('payment_receipts')
-          .getPublicUrl(path);
+        final publicUrlRaw = Supabase.instance.client.storage
+            .from('payment_receipts')
+            .getPublicUrl(path);
+
+        // Debugging: print the returned value and its type to help diagnose failures
+        debugPrint('[PaymentHistory] getPublicUrl(path=$path) returned: $publicUrlRaw (type: ${publicUrlRaw.runtimeType})');
+
+        final String imageUrl = _extractPublicUrl(publicUrlRaw) ?? publicUrlRaw.toString();
+        debugPrint('[PaymentHistory] resolved imageUrl: $imageUrl (type: ${imageUrl.runtimeType})');
+
+        if (imageUrl.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not resolve screenshot URL')),
+            );
+          }
+          return;
+        }
       
       if (mounted) {
         showDialog(
           context: context,
           builder: (context) => Dialog(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppBar(
-                  title: const Text('Payment Screenshot'),
-                  automaticallyImplyLeading: false,
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                Expanded(
-                  child: InteractiveViewer(
-                    child: Image.network(
-                      publicUrl,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error, size: 48, color: Colors.red),
-                              SizedBox(height: 16),
-                              Text('Failed to load image'),
-                            ],
-                          ),
-                        );
-                      },
+            child: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.75,
+              child: Column(
+                children: [
+                  AppBar(
+                    title: const Text('Payment Screenshot'),
+                    automaticallyImplyLeading: false,
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: InteractiveViewer(
+                      child: Image.network(
+                        imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 16),
+                                Text('Failed to load image'),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
