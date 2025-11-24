@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/utils/themes.dart';
 import 'package:the_basics/auth/auth_service.dart';
+
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({super.key});
