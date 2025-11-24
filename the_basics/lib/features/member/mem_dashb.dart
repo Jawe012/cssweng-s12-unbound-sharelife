@@ -18,6 +18,8 @@ class _MemDBState extends State<MemberDB> {
   List<Map<String, dynamic>> loans = [];
   double buttonHeight = 28;
   bool _isLoading = false;
+  // Controller for horizontal scrolling on the loans table
+  late ScrollController _horizontalScrollController;
   // Aggregates for approved active loans
   double _approvedTotalLoanAmount = 0.0;
   double _approvedPrincipalRepayment = 0.0;
@@ -26,7 +28,14 @@ class _MemDBState extends State<MemberDB> {
   @override
   void initState() {
     super.initState();
+    _horizontalScrollController = ScrollController();
     _fetchMemberLoans();
+  }
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchMemberLoans() async {
@@ -565,9 +574,13 @@ class _MemDBState extends State<MemberDB> {
           builder: (context, constraints) {
             return SingleChildScrollView(
               scrollDirection: Axis.vertical,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
+              child: Scrollbar(
+                controller: _horizontalScrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: _horizontalScrollController,
+                  child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minWidth: constraints.maxWidth,
                   ),
@@ -649,6 +662,7 @@ class _MemDBState extends State<MemberDB> {
                   ),
                 ),
               ),
+            ),
             );
           },
         ),

@@ -522,6 +522,45 @@ class _EncAppliformState extends State<EncAppliform> {
       return;
     }
 
+    // Validate application date is not in the past
+    try {
+      final appDateParts = appliDateController.text.split('-');
+      if (appDateParts.length == 3) {
+        final appDate = DateTime(int.parse(appDateParts[2]), int.parse(appDateParts[0]), int.parse(appDateParts[1]));
+        final today = DateTime.now();
+        final todayMidnight = DateTime(today.year, today.month, today.day);
+        if (appDate.isBefore(todayMidnight)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Application date cannot be in the past.'))
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid application date format.'))
+      );
+      return;
+    }
+
+    // Validate loan amount is positive
+    final loanAmountText = loanAmtController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final loanAmount = int.tryParse(loanAmountText);
+    if (loanAmount == null || loanAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loan amount must be a positive number.'))
+      );
+      return;
+    }
+
+    // Validate email format
+    if (!_emailRegExp.hasMatch(emailController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.'))
+      );
+      return;
+    }
+
     // get current signed-in user's email to resolve staff id
     final currentEmail = Supabase.instance.client.auth.currentUser?.email;
     if (currentEmail == null) {
@@ -663,9 +702,13 @@ class _EncAppliformState extends State<EncAppliform> {
         SizedBox(height: 16),
         SizedBox(
           width: 250,
-          child: DateInputField(
-            label: "Date of Application",
+          child: TextFormField(
             controller: appliDateController,
+            decoration: const InputDecoration(
+              labelText: 'Date of Application',
+            ),
+            readOnly: true,
+            enabled: false,
           ),
         ),
       ],
