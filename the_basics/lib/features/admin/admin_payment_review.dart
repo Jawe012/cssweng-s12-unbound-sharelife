@@ -67,7 +67,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
             payment_date,
             status,
             created_at,
-            approved_loans!inner(
+            approved_loans(
               member_first_name,
               member_last_name,
               member_id
@@ -75,6 +75,15 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
           ''')
           .eq('status', 'Pending Approval')
           .order('created_at', ascending: false);
+
+      debugPrint('[AdminPaymentReview] paymentsResp runtimeType=${paymentsResp.runtimeType}');
+      try {
+        final List paymentsList = paymentsResp as List;
+        debugPrint('[AdminPaymentReview] paymentsResp length=${paymentsList.length}');
+        if (paymentsList.isNotEmpty) debugPrint('[AdminPaymentReview] paymentsResp[0]=${paymentsList.first}');
+      } catch (e) {
+        debugPrint('[AdminPaymentReview] Error printing paymentsResp preview: $e');
+      }
 
       if (!mounted) return;
 
@@ -96,6 +105,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
         
         // Apply filter
         applyFilter();
+        debugPrint('[AdminPaymentReview] filteredPayments length after applyFilter=${filteredPayments.length}');
         _isLoading = false;
       });
       
@@ -139,7 +149,8 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
               DropdownMenuItem(value: null, child: Text('All')),
               DropdownMenuItem(value: 'Cash', child: Text('Cash')),
               DropdownMenuItem(value: 'Gcash', child: Text('GCash')),
-              DropdownMenuItem(value: 'Bank Transfer', child: Text('Bank Transfer')),
+              // Use enum-style value for DB compatibility, label stays friendly
+              DropdownMenuItem(value: 'Bank_Transfer', child: Text('Bank Transfer')),
             ],
             onChanged: (value) {
               setState(() {
@@ -173,7 +184,10 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
   }
 
   Widget paymentsTable() {
-    return Expanded(
+    return Container(
+      // Do not return Expanded here; the caller already wraps the table with
+      // an Expanded -> SizedBox. Returning Expanded from here caused
+      // Expanded -> SizedBox -> Expanded which throws ParentDataWidget errors.
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(

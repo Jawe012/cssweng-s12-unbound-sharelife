@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
+import 'package:the_basics/core/utils/themes.dart';
 import 'package:the_basics/auth/auth_service.dart';
+
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({super.key});
@@ -35,18 +37,21 @@ class _AccountSettingsState extends State<AccountSettings> {
           children: [
             TextField(
               controller: currentPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'Current Password'),
               obscureText: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: newPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'New Password'),
               obscureText: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: confirmPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'Confirm New Password'),
               obscureText: true,
             ),

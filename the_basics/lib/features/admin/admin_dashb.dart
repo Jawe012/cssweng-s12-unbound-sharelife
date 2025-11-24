@@ -447,21 +447,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ),
 
                             const Spacer(),
-
-                            // Download button
-                            SizedBox(
-                              height: fieldHeight,
-                              child: ElevatedButton.icon(
-                                onPressed: () {},
-                                icon: const Icon(Icons.download, color: AppThemes.buttonText),
-                                label: const Text("Download", style: TextStyle(color: AppThemes.buttonText)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppThemes.outerformButton,
-                                  minimumSize: const Size(100, fieldHeight),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
 

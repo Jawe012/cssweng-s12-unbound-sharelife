@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/export_dropdown_button.dart';
 import 'package:the_basics/core/utils/export_service.dart';
+import 'package:the_basics/core/utils/themes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MemberPaymentHistory extends StatefulWidget {
@@ -360,8 +361,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 160,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Payment ID",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -389,8 +392,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Start Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -414,8 +419,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "End Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
