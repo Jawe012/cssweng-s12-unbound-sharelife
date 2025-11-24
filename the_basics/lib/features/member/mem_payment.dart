@@ -454,8 +454,21 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
+          )
+        ),
+        child: Column(
         children: [
 
           // top nav bar
@@ -485,11 +498,12 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
                           const Text(
                             "Payment Form",
                             style: TextStyle(fontSize: 28, 
-                            fontWeight: FontWeight.bold),
+                            fontWeight: FontWeight.bold,
+                            color: AppThemes.pageTitle),
                           ),
                           const Text(
                             "Log your Payment",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                            style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                           ),
 
                           // download button
@@ -566,7 +580,10 @@ class _MemberPaymentFormState extends State<MemberPaymentForm> {
           ),
         ],
       ),
+      ),
       
+      
+    )
     );
   }
 

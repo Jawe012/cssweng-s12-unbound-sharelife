@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/core/utils/export_service.dart';
+import 'package:the_basics/core/utils/themes.dart';
 // removed email/edge-function usage — notifications are driven by the app
 
 class AdminPaymentReviewDetails extends StatefulWidget {
@@ -359,7 +360,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
               updatePaymentStatus(newStatus);
             },
             style: TextButton.styleFrom(
-              foregroundColor: action == 'Validate' ? Colors.green : Colors.red,
+              foregroundColor: action == 'Validate' ? AppThemes.confirmButton : AppThemes.rejectButton,
             ),
             child: Text(action),
           ),
@@ -680,8 +681,14 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           const TopNavBar(splash: "Admin"),
           Expanded(
@@ -714,6 +721,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                                       style: TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold,
+                                        color: AppThemes.pageTitle
                                       ),
                                     ),
                                   ],
@@ -723,7 +731,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
                                   padding: const EdgeInsets.only(left: 48),
                                   child: Text(
                                     "Review the payment details and validate or invalidate the submission.",
-                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                    style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                                   ),
                                 ),
                                 SizedBox(height: 32),
@@ -764,6 +772,7 @@ class _AdminPaymentReviewDetailsState extends State<AdminPaymentReviewDetails> {
           ),
         ],
       ),
+    )
     );
   }
 }

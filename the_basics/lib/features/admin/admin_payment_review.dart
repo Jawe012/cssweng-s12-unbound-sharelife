@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/core/utils/export_service.dart';
+import 'package:the_basics/core/utils/themes.dart';
 import 'dart:async';
 
 class AdminPaymentReview extends StatefulWidget {
@@ -165,7 +166,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
         Container(
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[400],
+            color: AppThemes.brown,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
@@ -174,7 +175,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: AppThemes.creme,
               ),
             ),
           ),
@@ -228,8 +229,14 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+       body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           // top nav bar
           TopNavBar(splash: "Admin"),
@@ -303,6 +310,7 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
           ),
         ],
       ),
+    )
     );
   }
 
@@ -328,10 +336,10 @@ class _AdminPaymentReviewState extends State<AdminPaymentReview> {
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppThemes.innerformButton,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: Text("Review", style: TextStyle(color: Colors.white)),
+        child: Text("Review", style: TextStyle(color: AppThemes.buttonText)),
       )),
     ]);
   }

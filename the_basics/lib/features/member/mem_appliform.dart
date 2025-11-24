@@ -6,6 +6,7 @@ import 'package:the_basics/core/widgets/export_dropdown_button.dart';
 import 'package:the_basics/core/utils/export_service.dart';
 import 'package:the_basics/core/utils/themes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 
 class LoanApplication {
@@ -977,8 +978,21 @@ class _MemAppliformState extends State<MemAppliform> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/imgs/bg_in.png"),
+            fit: BoxFit.cover,
+          )
+        ),
+        child: Column(
         children: [
 
           // top nav bar
@@ -1008,11 +1022,12 @@ class _MemAppliformState extends State<MemAppliform> {
                           const Text(
                             "Loan Applications",
                             style: TextStyle(fontSize: 28, 
-                            fontWeight: FontWeight.bold),
+                            fontWeight: FontWeight.bold,
+                            color: AppThemes.pageTitle),
                           ),
                           const Text(
                             "Apply for a loan.",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                            style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                           ),
 
                           // download button
@@ -1142,7 +1157,10 @@ class _MemAppliformState extends State<MemAppliform> {
           ),
         ],
       ),
+      ),
       
+      
+    )
     );
   }
 

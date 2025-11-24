@@ -6,6 +6,7 @@ import 'package:the_basics/core/widgets/input_fields.dart';
 import 'package:the_basics/core/utils/export_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class AdminFinanceManagement extends StatefulWidget {
   const AdminFinanceManagement({super.key});
@@ -748,8 +749,14 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           TopNavBar(splash: "Admin"),
           Expanded(
@@ -767,25 +774,21 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
                         // Title
                         Text(
                           "Voucher Generation",
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppThemes.pageTitle),
                         ),
                         Text(
                           "Create and manage check vouchers",
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14,),
                         ),
                         SizedBox(height: 24),
                         
                         // Tabs
                         Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
                           child: TabBar(
                             controller: _tabController,
-                            labelColor: Colors.blue,
-                            unselectedLabelColor: Colors.grey,
-                            indicatorColor: Colors.blue,
+                            labelColor: AppThemes.outerformButton,
+                            unselectedLabelColor: AppThemes.pageSubtitle,
+                            indicatorColor: AppThemes.outerformButton,
                             tabs: [
                               Tab(text: "Voucher Application"),
                               Tab(text: "Voucher Search"),
@@ -813,9 +816,10 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
+                                        
                                         Text(
                                           "Check Voucher",
-                                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppThemes.buttonText),
                                         ),
                                         ExportDropdownButton(
                                           height: 40,
@@ -958,11 +962,11 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
                                       child: ElevatedButton(
                                         onPressed: _submitVoucher,
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.black,
+                                          backgroundColor: AppThemes.outerformButton,
                                           padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                         ),
-                                        child: Text("Submit Voucher", style: TextStyle(color: Colors.white, fontSize: 16)),
+                                        child: Text("Submit Voucher", style: TextStyle(color: AppThemes.buttonText, fontSize: 16)),
                                       ),
                                     ),
                                   ],
@@ -999,6 +1003,7 @@ class _AdminFinanceManagementState extends State<AdminFinanceManagement> with Si
           ),
         ],
       ),
+    )
     );
   }
 }

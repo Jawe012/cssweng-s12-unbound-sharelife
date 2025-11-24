@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/utils/export_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class AdminLoanPayRec extends StatefulWidget {
   const AdminLoanPayRec({super.key});
@@ -198,17 +199,6 @@ class _MemDBState extends State<AdminLoanPayRec> {
   Widget loanFilters() {
     return Container(
       padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           // Reference number search
@@ -613,8 +603,14 @@ class _MemDBState extends State<AdminLoanPayRec> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-      backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           // top nav bar
           TopNavBar(splash: "Admin"),
@@ -646,18 +642,19 @@ class _MemDBState extends State<AdminLoanPayRec> {
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
+                                color: AppThemes.pageTitle
                               ),
                             ),
                             Text(
                               "View and filter through all loan and payment records here.",
-                              style: TextStyle(color: Colors.grey, fontSize: 14),
+                              style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                             ),
                             SizedBox(height: 24),
 
                             // tabs
                             TabBar(
-                              labelColor: Colors.black,
-                              indicatorColor: Colors.black,
+                              labelColor: AppThemes.outerformButton,
+                              indicatorColor: AppThemes.outerformButton,
                               tabs: [
                                 Tab(text: "Loans"),
                                 Tab(text: "Payments"),
@@ -703,6 +700,7 @@ class _MemDBState extends State<AdminLoanPayRec> {
           ),
         ],
       ),
+    )
     );
   }
 }
