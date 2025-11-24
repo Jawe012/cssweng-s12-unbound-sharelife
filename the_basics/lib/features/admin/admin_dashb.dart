@@ -325,8 +325,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   body: Container(
     decoration: BoxDecoration(
       image: DecorationImage(
-        image: AssetImage("assets/imgs/bg_in.png"), // <-- your asset here
-        fit: BoxFit.cover, // cover, contain, fill
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
       ),
     ),
     child: Column(

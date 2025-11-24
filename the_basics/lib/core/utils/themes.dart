@@ -50,5 +50,7 @@ class AppThemes{
   static const Color lines = black;   // accounts for both icons and text
   static const Color outerformButton = orange;
   static const Color innerformButton = lightorange;
+  static const Color confirmButton = lightgreen;
+  static const Color rejectButton = Color.fromARGB(255, 210, 106, 106);
   static const Color buttonText = brown;
 }
