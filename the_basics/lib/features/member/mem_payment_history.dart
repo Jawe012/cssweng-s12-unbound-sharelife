@@ -40,7 +40,7 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
       
       if (user == null) {
         debugPrint('[PaymentHistory] No authenticated user');
-        setState(() => isLoading = false);
+        if (mounted) setState(() => isLoading = false);
         return;
       }
 
@@ -52,19 +52,72 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           .select('application_id, loan_amount, repayment_term, member_first_name, member_last_name')
           .eq('member_email', user.email!);
 
+      debugPrint('[PaymentHistory] approved_loans query raw result type: ${loansRes.runtimeType}');
+      try {
+        final loansPreview = (loansRes as List).take(3).toList();
+        debugPrint('[PaymentHistory] approved_loans query raw result preview: $loansPreview');
+      } catch (e) {
+        debugPrint('[PaymentHistory] approved_loans preview error: $e');
+      }
+
       final loans = loansRes as List;
       if (loans.isEmpty) {
         debugPrint('[PaymentHistory] No approved loans found');
-        setState(() {
-          isLoading = false;
-          payments = [];
-          filteredPayments = [];
-        });
+
+        // Diagnostic: also check the `member_loans` view (if present) to see if the view contains rows
+        try {
+          // Lookup member_id first (the view exposes `member_id`, not `member_email`)
+          try {
+            final memberRec = await supabase
+              .from('members')
+              .select('id')
+              .eq('email_address', user.email!)
+              .maybeSingle();
+
+            debugPrint('[PaymentHistory] member lookup result: $memberRec');
+
+            if (memberRec != null && memberRec['id'] != null) {
+              final memberId = memberRec['id'];
+              final viewRes = await supabase
+                  .from('member_loans')
+                  .select('*')
+                  .eq('member_id', memberId);
+
+              debugPrint('[PaymentHistory] member_loans view query type: ${viewRes.runtimeType}');
+              try {
+                final viewPreview = (viewRes as List).take(5).toList();
+                debugPrint('[PaymentHistory] member_loans view preview: $viewPreview');
+              } catch (e) {
+                debugPrint('[PaymentHistory] member_loans preview error: $e');
+              }
+            } else {
+              debugPrint('[PaymentHistory] Member record not found for email ${user.email}; cannot query member_loans by member_id');
+            }
+          } catch (memberErr) {
+            debugPrint('[PaymentHistory] Error looking up member by email: $memberErr');
+          }
+        } catch (viewErr) {
+          debugPrint('[PaymentHistory] Error querying member_loans view: $viewErr');
+        }
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            payments = [];
+            filteredPayments = [];
+          });
+        }
         return;
       }
 
       final loanIds = loans.map((loan) => loan['application_id']).toList();
       debugPrint('[PaymentHistory] Found ${loanIds.length} loans: $loanIds');
+
+      // Extra diagnostic: print the loan objects themselves (limited preview)
+      try {
+        debugPrint('[PaymentHistory] loans preview: ${loans.take(5).toList()}');
+      } catch (e) {
+        debugPrint('[PaymentHistory] Error printing loans preview: $e');
+      }
 
       // get all payments for loans
       final paymentsRes = await supabase
@@ -129,20 +182,22 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
         }
       }
 
-      setState(() {
-        payments = enrichedPayments;
-        filteredPayments = enrichedPayments;
-        totalPaid = total;
-        totalPayments = approvedCount;
-        pendingAmount = pending;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          payments = enrichedPayments;
+          filteredPayments = enrichedPayments;
+          totalPaid = total;
+          totalPayments = approvedCount;
+          pendingAmount = pending;
+          isLoading = false;
+        });
+      }
 
   debugPrint('[PaymentHistory] Loaded ${payments.length} payments. Total: ${ExportService.currencyFormat.format(totalPaid)}');
 
     } catch (e) {
       debugPrint('[PaymentHistory] Error fetching payment history: $e');
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

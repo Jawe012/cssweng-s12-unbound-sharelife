@@ -150,6 +150,76 @@ class _MemAppliformState extends State<MemAppliform> {
     final day = now.day.toString().padLeft(2, '0');
     final year = now.year.toString();
     appliDateController.text = "$month-$day-$year";
+    // Check member loan status on load so we can hide the form if needed
+    _checkCurrentMemberLoanStatus();
+  }
+
+  bool _hasPendingApplication = false;
+  bool _hasActiveLoan = false;
+  bool _checkedLoanStatus = false;
+
+  Future<void> _checkCurrentMemberLoanStatus() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null || user.email == null) {
+        debugPrint('[MemAppliform] No signed-in user or user email; skipping loan status check.');
+        setState(() {
+          _checkedLoanStatus = true; // nothing to check
+        });
+        return;
+      }
+
+      final email = user.email!.trim().toLowerCase();
+      debugPrint('[MemAppliform] Signed-in user email: $email');
+      final member = await Supabase.instance.client
+          .from('members')
+          .select('id')
+          .eq('email_address', email)
+          .maybeSingle();
+
+      if (member == null || member['id'] == null) {
+        debugPrint('[MemAppliform] No member record found for email: $email');
+        setState(() {
+          _checkedLoanStatus = true;
+        });
+        return;
+      }
+
+      final memberId = member['id'];
+      debugPrint('[MemAppliform] Resolved member id: $memberId for email: $email');
+
+      // Check pending application (status = 'Pending')
+      final pending = await Supabase.instance.client
+        .from('loan_application')
+        .select('application_id,status,created_at')
+        .eq('member_id', memberId)
+        .eq('status', 'Pending')
+        .limit(1) as List<dynamic>;
+      debugPrint('[MemAppliform] loan_application query returned ${pending.length} rows for memberId=$memberId');
+      if (pending.isNotEmpty) debugPrint('[MemAppliform] pending record: ${pending.first}');
+
+      // Check active approved loans (status = 'active')
+      final active = await Supabase.instance.client
+        .from('approved_loans')
+        .select('application_id,status,loan_amount,created_at')
+        .eq('member_id', memberId)
+        .eq('status', 'active')
+        .limit(1) as List<dynamic>;
+      debugPrint('[MemAppliform] approved_loans query returned ${active.length} rows for memberId=$memberId');
+      if (active.isNotEmpty) debugPrint('[MemAppliform] active record: ${active.first}');
+
+      debugPrint('[MemAppliform] Setting state: pending=${pending.isNotEmpty} active=${active.isNotEmpty}');
+      setState(() {
+        _hasPendingApplication = pending.isNotEmpty;
+        _hasActiveLoan = active.isNotEmpty;
+        _checkedLoanStatus = true;
+      });
+    } catch (e) {
+      debugPrint('Error checking member loan status on load: $e');
+      setState(() {
+        _checkedLoanStatus = true;
+      });
+    }
   }
 
   Future<void> submitForm() async {
@@ -281,6 +351,22 @@ class _MemAppliformState extends State<MemAppliform> {
     }
   } catch (e) {
     debugPrint('Error checking existing loan application: $e');
+  }
+
+  // Prevent if there's an active approved loan for this member
+  try {
+    final approved = await Supabase.instance.client
+        .from('approved_loans')
+        .select('application_id,status')
+        .eq('member_id', memberRecord['id'])
+        .eq('status', 'active')
+        .limit(1) as List<dynamic>;
+    if (approved.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You already have an active approved loan and cannot apply for another.')));
+      return;
+    }
+  } catch (e) {
+    debugPrint('Error checking approved loans: $e');
   }
 
   Future<void> submitToSupabase(LoanApplication application) async {
@@ -845,81 +931,118 @@ class _MemAppliformState extends State<MemAppliform> {
                           // download button
                           buttonsRow(),
 
-                          // application form
-                          Expanded( 
-                            child: Container(
-                            margin: const EdgeInsets.only(top: 16),
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-
-                            // form content
-                            child: Form(
-                              key: _formKey,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    
-                                    // Date of Application
-                                    appliDate(),                                    
-                                    SizedBox(height: 40),
-
-                                    // Loan Information
-                                    loanInfo(),
-                                    SizedBox(height: 40),
-                                    
-                                    // Personal Information
-                                    personalInfo(),
-                                    SizedBox(height: 40),
-
-                                    // Loan Co-maker
-                                    coMakers(),
-                                    SizedBox(height: 40),
-
-                                    // Contact Information
-                                    contactInfo(),
-                                    SizedBox(height: 40),
-
-                                    // Consent
-                                    consentForm(),
-                                    SizedBox(height: 18),
-
-
-                                    // Submit button
-                                    Center( 
-                                      child: ElevatedButton.icon(
-                                        onPressed: submitForm,
-                                        
-                                        label: const Text(
-                                          "Submit Application",
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                                          backgroundColor: Colors.black,
-                                          minimumSize: const Size(100, 28),
-                                        ),
-                                      ),
-                                    )
-
+                          // application form (conditionally shown)
+                          if (!_checkedLoanStatus) ...[
+                            // still checking member loan status
+                            Expanded(
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          ] else if (_hasPendingApplication || _hasActiveLoan) ...[
+                            Expanded(
+                              child: Container(
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 4),
+                                    ),
                                   ],
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.info_outline, size: 48, color: Colors.orange),
+                                      SizedBox(height: 12),
+                                      if (_hasPendingApplication) ...[
+                                        Text('You already have a pending loan application!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                        SizedBox(height: 8),
+                                        Text('You cannot submit another loan application while a pending application exists.', textAlign: TextAlign.center),
+                                      ] else if (_hasActiveLoan) ...[
+                                        Text('You already have an active approved loan.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                        SizedBox(height: 8),
+                                        Text('You cannot apply for another loan while an active loan exists.', textAlign: TextAlign.center),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          ] else ...[
+                            // show the full form when no pending or active loan exists
+                            Expanded(
+                              child: Container(
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                // form content
+                                child: Form(
+                                  key: _formKey,
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Date of Application
+                                        appliDate(),
+                                        SizedBox(height: 40),
+
+                                        // Loan Information
+                                        loanInfo(),
+                                        SizedBox(height: 40),
+
+                                        // Personal Information
+                                        personalInfo(),
+                                        SizedBox(height: 40),
+
+                                        // Loan Co-maker
+                                        coMakers(),
+                                        SizedBox(height: 40),
+
+                                        // Contact Information
+                                        contactInfo(),
+                                        SizedBox(height: 40),
+
+                                        // Consent
+                                        consentForm(),
+                                        SizedBox(height: 18),
+
+                                        // Submit button
+                                        Center(
+                                          child: ElevatedButton.icon(
+                                            onPressed: submitForm,
+                                            label: const Text(
+                                              "Submit Application",
+                                              style: TextStyle(color: Colors.white),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                                              backgroundColor: Colors.black,
+                                              minimumSize: const Size(100, 28),
+                                            ),
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-
-
-                            ),
-                          ),
+                          ]
 
 
                         ],

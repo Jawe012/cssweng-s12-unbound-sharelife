@@ -56,6 +56,9 @@ class _EncAppliformState extends State<EncAppliform> {
   int? selectedMemberId;
   String? selectedMemberName;
   String? staffSearchError;
+  bool _selectedMemberHasPending = false;
+  bool _selectedMemberHasActive = false;
+  bool _checkingSelectedMemberStatus = false;
 
   // validation limits (adjust as needed)
   static const int minLoanAmount = 1000;
@@ -418,6 +421,52 @@ class _EncAppliformState extends State<EncAppliform> {
         emailController.text = email;
         phoneNumController.text = contact;
       });
+      debugPrint('[EncoderAppliform] Selected member: id=$selectedMemberId name=$selectedMemberName email=$email');
+      // check loan status for this selected member and show frontend error if needed
+      if (selectedMemberId != null) {
+        setState(() { _checkingSelectedMemberStatus = true; });
+        await _checkLoanStatusForMember(selectedMemberId!);
+        debugPrint('[EncoderAppliform] Finished loan status check for member: $selectedMemberId (pending=$_selectedMemberHasPending active=$_selectedMemberHasActive)');
+        if (mounted) setState(() { _checkingSelectedMemberStatus = false; });
+      }
+    }
+  }
+
+  Future<void> _checkLoanStatusForMember(int memberId) async {
+    try {
+      debugPrint('[EncoderAppliform] Checking loan status for memberId=$memberId');
+
+      // Mirror mem_appliform: use limit(1) to get a list and check isNotEmpty
+      final pending = await Supabase.instance.client
+          .from('loan_application')
+          .select('application_id')
+          .eq('member_id', memberId)
+          .eq('status', 'Pending')
+          .limit(1) as List<dynamic>;
+
+      final active = await Supabase.instance.client
+          .from('approved_loans')
+          .select('application_id')
+          .eq('member_id', memberId)
+          .eq('status', 'active')
+          .limit(1) as List<dynamic>;
+
+      debugPrint('[EncoderAppliform] loan_application query returned ${pending.length} rows for memberId=$memberId');
+      if (pending.isNotEmpty) debugPrint('[EncoderAppliform] pending record: ${pending.first}');
+      debugPrint('[EncoderAppliform] approved_loans query returned ${active.length} rows for memberId=$memberId');
+      if (active.isNotEmpty) debugPrint('[EncoderAppliform] active record: ${active.first}');
+
+      if (mounted) setState(() {
+        _selectedMemberHasPending = pending.isNotEmpty;
+        _selectedMemberHasActive = active.isNotEmpty;
+      });
+
+    } catch (e) {
+      debugPrint('Error checking loan status for member $memberId: $e');
+      if (mounted) setState(() {
+        _selectedMemberHasPending = false;
+        _selectedMemberHasActive = false;
+      });
     }
   }
 
@@ -518,6 +567,22 @@ class _EncAppliformState extends State<EncAppliform> {
       }
     } catch (e) {
       debugPrint('Error checking existing loan application: $e');
+    }
+
+    // Prevent if there's an active approved loan for this member
+    try {
+      final approved = await Supabase.instance.client
+          .from('approved_loans')
+          .select('application_id,status')
+          .eq('member_id', selectedMemberId!)
+          .eq('status', 'active')
+          .limit(1) as List<dynamic>;
+      if (approved.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This member already has an active approved loan and cannot apply for another.')));
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error checking approved loans: $e');
     }
 
 
@@ -998,83 +1063,108 @@ class _EncAppliformState extends State<EncAppliform> {
                           // download button
                           buttonsRow(),
 
-                          // application form
-                          Expanded( 
+                          // application form area: always show member lookup, then either an info panel or the form
+                          Expanded(
                             child: Container(
-                            margin: const EdgeInsets.only(top: 16),
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
+                              margin: const EdgeInsets.only(top: 16),
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Form(
+                                key: _formKey,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Member Search (always visible)
+                                      memberSearchSection(),
+                                      const SizedBox(height: 12),
 
-                            // form content
-                            child: Form(
-                              key: _formKey,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-
-                                    // Member Search
-                                    memberSearchSection(),
-                                    const SizedBox(height: 12),
-
-                                    // Date of Application
-                                    appliDate(),
-                                    const SizedBox(height: 40),
-
-                                    // Loan Information
-                                    loanInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Personal Information
-                                    personalInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Loan Co-maker
-                                    coMakers(),
-                                    const SizedBox(height: 40),
-
-                                    // Contact Information
-                                    contactInfo(),
-                                    const SizedBox(height: 40),
-
-                                    // Consent
-                                    consentForm(),
-                                    const SizedBox(height: 18),
-
-                                    // Submit button
-                                    Center(
-                                      child: ElevatedButton.icon(
-                                        onPressed: submitForm,
-                                        icon: const SizedBox.shrink(),
-                                        label: const Text(
-                                          "Submit Application",
-                                          style: TextStyle(color: Colors.white),
+                                      // If we're currently checking the selected member's loan status, show a loader
+                                      if (_checkingSelectedMemberStatus) ...[
+                                        const SizedBox(height: 12),
+                                        Center(child: CircularProgressIndicator()),
+                                        const SizedBox(height: 12),
+                                      ] else
+                                      // If a member is selected and they have a pending or active loan,
+                                      // show the same informational panel used in the member form.
+                                      if (selectedMemberId != null && (_selectedMemberHasPending || _selectedMemberHasActive)) ...[
+                                        Center(
+                                          child: Column(
+                                            children: [
+                                              const SizedBox(height: 12),
+                                              Icon(Icons.info_outline, size: 48, color: Colors.orange),
+                                              const SizedBox(height: 12),
+                                              if (_selectedMemberHasPending) ...[
+                                                const Text('User already has a pending loan application!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                                const SizedBox(height: 8),
+                                                const Text('Cannot submit another loan application for the user while a pending application exists.', textAlign: TextAlign.center),
+                                              ] else if (_selectedMemberHasActive) ...[
+                                                const Text('User already has an active approved loan.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                                const SizedBox(height: 8),
+                                                const Text('Cannot apply for another loan for the user while an active loan exists.', textAlign: TextAlign.center),
+                                              ],
+                                              const SizedBox(height: 12),
+                                            ],
+                                          ),
                                         ),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-                                          backgroundColor: Colors.black,
-                                          minimumSize: const Size(100, 28),
-                                        ),
-                                      ),
-                                    ),
+                                      ] else ...[
+                                        // Date of Application
+                                        appliDate(),
+                                        const SizedBox(height: 40),
 
-                                  ],
+                                        // Loan Information
+                                        loanInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Personal Information
+                                        personalInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Loan Co-maker
+                                        coMakers(),
+                                        const SizedBox(height: 40),
+
+                                        // Contact Information
+                                        contactInfo(),
+                                        const SizedBox(height: 40),
+
+                                        // Consent
+                                        consentForm(),
+                                        const SizedBox(height: 18),
+
+                                        // Submit button
+                                        Center(
+                                          child: ElevatedButton.icon(
+                                            onPressed: submitForm,
+                                            icon: const SizedBox.shrink(),
+                                            label: const Text(
+                                              "Submit Application",
+                                              style: TextStyle(color: Colors.white),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                                              backgroundColor: Colors.black,
+                                              minimumSize: const Size(100, 28),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-
-                          ),
-                          ),
+                          )
 
 
                         ],
