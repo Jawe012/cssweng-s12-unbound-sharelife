@@ -168,16 +168,19 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
       double pending = 0.0;
       int approvedCount = 0;
       for (var payment in enrichedPayments) {
-        final amount = (payment['amount'] is num) 
-            ? (payment['amount'] as num).toDouble() 
+        final amount = (payment['amount'] is num)
+            ? (payment['amount'] as num).toDouble()
             : double.tryParse(payment['amount'].toString()) ?? 0.0;
-        
+
         final status = payment['status']?.toString() ?? '';
-        
-        if (status == 'Approved') {
+        final statusNorm = status.toLowerCase();
+
+        // Treat both 'Approved' and legacy/alternate 'Validated' as approved
+        if (statusNorm == 'approved' || statusNorm == 'validated') {
           total += amount;
           approvedCount++;
-        } else if (status == 'Pending Approval') {
+        } else if (statusNorm.contains('pending')) {
+          // any pending-like status counts toward pendingAmount
           pending += amount;
         }
       }

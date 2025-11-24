@@ -543,12 +543,12 @@ class _EncAppliformState extends State<EncAppliform> {
       return;
     }
 
-    // Validate loan amount is positive
+    // Validate loan amount is positive (minimum 1)
     final loanAmountText = loanAmtController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final loanAmount = int.tryParse(loanAmountText);
-    if (loanAmount == null || loanAmount <= 0) {
+    if (loanAmount == null || loanAmount < 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loan amount must be a positive number.'))
+        const SnackBar(content: Text('Loan amount must be at least 1.'))
       );
       return;
     }
@@ -557,6 +557,22 @@ class _EncAppliformState extends State<EncAppliform> {
     if (!_emailRegExp.hasMatch(emailController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid email address.'))
+      );
+      return;
+    }
+
+    // Validate annual income (must be at least 1 peso)
+    final anlIncText = anlIncController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (anlIncText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Annual income must be at least 1.'))
+      );
+      return;
+    }
+    final anlInc = double.tryParse(anlIncText) ?? 0.0;
+    if (anlInc < 1.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Annual income must be at least 1.'))
       );
       return;
     }
@@ -590,6 +606,27 @@ class _EncAppliformState extends State<EncAppliform> {
     }
 
     // Prevent duplicate pending applications for the same member
+    // Enforce max loan amount based on whether this is the member's first loan
+    int maxLoanAllowed = 3000; // default for first loan
+    try {
+      final prev = await Supabase.instance.client
+          .from('member_loans')
+          .select('application_id')
+          .eq('member_id', selectedMemberId!)
+          .limit(1) as List<dynamic>;
+      if (prev.isNotEmpty) maxLoanAllowed = 50000;
+    } catch (e) {
+      debugPrint('Error checking prior loans for member: $e');
+      maxLoanAllowed = 3000;
+    }
+
+    if (loanAmount > maxLoanAllowed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loan amount exceeds allowed maximum of Php $maxLoanAllowed for this member.'))
+      );
+      return;
+    }
+
     try {
       final existing = await Supabase.instance.client
           .from('loan_application')

@@ -255,17 +255,36 @@ class _MemAppliformState extends State<MemAppliform> {
   // Validate loan amount is positive
   final loanAmountText = loanAmtController.text.replaceAll(RegExp(r'[^0-9]'), '');
   final loanAmount = int.tryParse(loanAmountText);
-  if (loanAmount == null || loanAmount <= 0) {
+  if (loanAmount == null || loanAmount < 1) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Loan amount must be a positive number."))
+      SnackBar(content: Text("Loan amount must be at least 1."))
     );
     return;
   }
+
+  
 
   // Validate email format
   if (!_emailRegExp.hasMatch(emailController.text.trim())) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Please enter a valid email address."))
+    );
+    return;
+  }
+
+  // Validate annual income (must be at least 1 peso)
+  final anlIncText = anlIncController.text.replaceAll(RegExp(r'[^0-9]'), '');
+  if (anlIncText.isEmpty) {
+    // treat empty as null/0 -> invalid per requirement
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Annual income must be at least 1."))
+    );
+    return;
+  }
+  final anlInc = double.tryParse(anlIncText) ?? 0.0;
+  if (anlInc < 1.0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Annual income must be at least 1."))
     );
     return;
   }
@@ -369,6 +388,30 @@ class _MemAppliformState extends State<MemAppliform> {
     final formattedDbBirthDate = "${dbBirthDate.month}/${dbBirthDate.day}/${dbBirthDate.year}";
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Provided name does not match member records.\nExpected: $dbFirstName $dbLastName (DOB: $formattedDbBirthDate)"))
+    );
+    return;
+  }
+
+  // Determine whether this is the member's first loan to set max allowed loan amount
+  int maxLoanAllowed = 3000; // default for first loan
+  try {
+    final prev = await Supabase.instance.client
+        .from('member_loans')
+        .select('application_id')
+        .eq('member_id', memberRecord['id'])
+        .limit(1) as List<dynamic>;
+    if (prev.isNotEmpty) {
+      maxLoanAllowed = 50000;
+    }
+  } catch (e) {
+    debugPrint('Error checking prior loans for member: $e');
+    // keep default as first-loan max
+    maxLoanAllowed = 3000;
+  }
+
+  if (loanAmount > maxLoanAllowed) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Loan amount exceeds allowed maximum of Php $maxLoanAllowed for this member."))
     );
     return;
   }
