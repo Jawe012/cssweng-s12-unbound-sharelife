@@ -847,11 +847,12 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
+                              color: AppThemes.pageTitle
                             ),
                           ),
                           Text(
                             "View your complete payment history and transaction details.",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                            style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                           ),
                           SizedBox(height: 24),
 

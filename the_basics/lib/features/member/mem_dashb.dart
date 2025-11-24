@@ -723,11 +723,12 @@ class _MemDBState extends State<MemberDB> {
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
+                              color: AppThemes.pageTitle
                             ),
                           ),
                           Text(
                             "View your loan applications and their statuses.",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                            style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                           ),
                           SizedBox(height: 24),
 
