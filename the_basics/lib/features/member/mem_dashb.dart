@@ -387,8 +387,10 @@ class _MemDBState extends State<MemberDB> {
           width: 160,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Ref. No.",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -406,8 +408,10 @@ class _MemDBState extends State<MemberDB> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Start Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -431,8 +435,10 @@ class _MemDBState extends State<MemberDB> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "End Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),

@@ -37,18 +37,21 @@ class _AccountSettingsState extends State<AccountSettings> {
           children: [
             TextField(
               controller: currentPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'Current Password'),
               obscureText: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: newPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'New Password'),
               obscureText: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: confirmPasswordController,
+              style: TextStyle(color: AppThemes.authInput),
               decoration: const InputDecoration(labelText: 'Confirm New Password'),
               obscureText: true,
             ),

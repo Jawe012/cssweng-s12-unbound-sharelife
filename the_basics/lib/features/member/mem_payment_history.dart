@@ -361,8 +361,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 160,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Payment ID",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -390,8 +392,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "Start Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -415,8 +419,10 @@ class _MemberPaymentHistoryState extends State<MemberPaymentHistory> {
           width: 120,
           height: buttonHeight,
           child: TextField(
+            style: TextStyle(color: AppThemes.authInput),
             decoration: InputDecoration(
               labelText: "End Date",
+              labelStyle: TextStyle(color: AppThemes.authFieldName),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
