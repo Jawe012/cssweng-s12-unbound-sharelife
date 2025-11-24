@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -272,11 +273,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
         headingRowHeight: 48,
         dataRowHeight: 48,
         columns: const [
-          DataColumn(label: Text("Name", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Email", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Role", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Actions", style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(label: Text("Name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+          DataColumn(label: Text("Email", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+          DataColumn(label: Text("Role", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+          DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+          DataColumn(label: Text("Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
         ],
         rows: filteredStaff.map((staff) {
           return DataRow(
@@ -289,7 +290,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                     TextButton(
                       onPressed: () => _showRoleChangeDialog(staff),
-                      child: const Text("Change Role"),
+                      child: const Text("Change Role", style: TextStyle(color: AppThemes.outerformButton)),
                     ),
                     const SizedBox(width: 8),
                     if (staff["status"] == "Active") ...[
@@ -301,7 +302,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           arguments: staff['id'],
                         );
                       },
-                    child: const Text("Edit"),
+                    child: const Text("Edit", style: TextStyle(color: AppThemes.outerformButton)),
                   ),
                   ] else ...[
                     TextButton(onPressed: () {}, child: const Text("Activate")),
@@ -321,8 +322,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const double fieldHeight = 40;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+  body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"), // <-- your asset here
+        fit: BoxFit.cover, // cover, contain, fill
+      ),
+    ),
+    child: Column(
         children: [
           const TopNavBar(splash: "Admin"),
           Expanded(
@@ -339,11 +346,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       children: [
                         const Text(
                           "Staff Management",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 28),
+                          style: TextStyle(color: AppThemes.pageTitle, fontWeight: FontWeight.bold, fontSize: 28),
                         ),
                         const Text(
                           "View, add, and manage staff accounts & roles.",
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                         ),
                         const SizedBox(height: 20),
 
@@ -446,10 +453,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               height: fieldHeight,
                               child: ElevatedButton.icon(
                                 onPressed: () {},
-                                icon: const Icon(Icons.download, color: Colors.white),
-                                label: const Text("Download", style: TextStyle(color: Colors.white)),
+                                icon: const Icon(Icons.download, color: AppThemes.buttonText),
+                                label: const Text("Download", style: TextStyle(color: AppThemes.buttonText)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.black,
+                                  backgroundColor: AppThemes.outerformButton,
                                   minimumSize: const Size(100, fieldHeight),
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                 ),
@@ -488,10 +495,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               onPressed: () {
                                 Navigator.pushNamed(context, '/staff-register');
                               },
-                              icon: const Icon(Icons.person_add, color: Colors.white),
-                              label: const Text("Add Staff", style: TextStyle(color: Colors.white)),
+                              icon: const Icon(Icons.person_add, color: AppThemes.buttonText),
+                              label: const Text("Add Staff", style: TextStyle(color: AppThemes.buttonText)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: AppThemes.lightgreen,
                                 minimumSize: const Size(140, 44),
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                               ),
@@ -507,6 +514,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
+    )
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:the_basics/auth/login.dart';
 import 'package:the_basics/auth/register.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class AuthNavBar extends StatelessWidget {
   final bool hideAuthButtons;
@@ -20,10 +21,10 @@ class AuthNavBar extends StatelessWidget {
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppThemes.topnavContainer,
         border: Border(
           bottom: BorderSide(
-            color: Colors.grey,
+            color: AppThemes.lines,
             width: 1.0,
           ),
         ),
@@ -49,7 +50,7 @@ class AuthNavBar extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0C0C0D),
+              color: AppThemes.topnavName,
             ),
           ),
           const Spacer(),
@@ -70,7 +71,7 @@ class AuthNavBar extends StatelessWidget {
               child: const Text(
                 'Login',
                 style: TextStyle(
-                  color: Color(0xFF0C0C0D),
+                  color: AppThemes.outerformButton,
                   fontSize: 16,
                 ),
               ),
@@ -90,8 +91,8 @@ class AuthNavBar extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0C0C0D),
-                foregroundColor: Colors.white,
+                backgroundColor: AppThemes.outerformButton,
+                foregroundColor: AppThemes.buttonText,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:the_basics/auth/auth_service.dart';
 import 'package:the_basics/core/widgets/auth_navbar.dart';
 import 'package:the_basics/core/utils/remember_me.dart';
+import 'package:the_basics/core/utils/themes.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -91,8 +92,14 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_out.png"),
+        fit: BoxFit.fill,
+      ),
+    ),
+    child: Column(
         children: [
           const AuthNavBar(),
           Expanded(
@@ -101,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                 width: 400,
                 padding: const EdgeInsets.all(40),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppThemes.authContainer,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
@@ -118,8 +125,10 @@ class _LoginPageState extends State<LoginPage> {
                     // Username or Email Address
                     TextField(
                       controller: _emailController,
+                      style: TextStyle(color: AppThemes.authInput),
                       decoration: InputDecoration(
                           labelText: 'Username or Email Address',
+                          labelStyle: TextStyle(color: AppThemes.authFieldName),
                           border: OutlineInputBorder(),
                           hintText: 'Username or Email Address'),
                     ),
@@ -129,8 +138,12 @@ class _LoginPageState extends State<LoginPage> {
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
+                        style: const TextStyle(
+                        color: AppThemes.authInput
+                      ),
                       decoration: InputDecoration(
                           labelText: 'Password',
+                          labelStyle: TextStyle(color: AppThemes.authFieldName),
                           border: OutlineInputBorder(),
                           hintText: 'Password'),
                     ),
@@ -151,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: const Text(
                           'Forgot password?',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: AppThemes.authOptions,
                             fontSize: 14,
                           ),
                         ),
@@ -162,11 +175,23 @@ class _LoginPageState extends State<LoginPage> {
                     // Remember me checkbox
                     Row(
                       children: [
-                        Checkbox(
-                          value: _rememberMe,
-                          onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                        Theme(
+                          data: Theme.of(context).copyWith(
+                            checkboxTheme: CheckboxThemeData(
+                              fillColor: MaterialStateProperty.all(AppThemes.authRememberFilled),
+                              checkColor: MaterialStateProperty.all(AppThemes.buttonText),
+                            ),
+                          ),
+                          child: Checkbox(
+                            value: _rememberMe,
+                            onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                          ),
                         ),
-                        const Text('Remember me?'),
+
+                        const Text(
+                          'Remember me?',
+                          style: TextStyle(color: AppThemes.authOptions),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -175,8 +200,8 @@ class _LoginPageState extends State<LoginPage> {
                     ElevatedButton(
                       onPressed: login,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0C0C0D),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppThemes.outerformButton,
+                        foregroundColor: AppThemes.buttonText,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
@@ -194,6 +219,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ],
       ),
+    )
     );
   }
 }
