@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/core/utils/export_service.dart';
+import 'package:the_basics/core/utils/themes.dart';
 import 'dart:async';
 
 class LoanReviewPage extends StatefulWidget {
@@ -92,7 +93,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[400],
+        color: AppThemes.brown,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
@@ -101,7 +102,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: AppThemes.creme,
           ),
         ),
       ),
@@ -129,11 +130,11 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
               scrollDirection: Axis.vertical,
               child: DataTable(
                 columns: [
-                  DataColumn(label: Text("Applicant", style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text("Loan Type", style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text("Date Submitted", style: TextStyle(fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text("Applicant", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                  DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                  DataColumn(label: Text("Loan Type", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                  DataColumn(label: Text("Date Submitted", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                  DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                 ],
                 rows: loans.map((loan) {
                   return _buildRow(loan);
@@ -151,8 +152,14 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-      backgroundColor: Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           // top nav bar
           TopNavBar(splash: "Admin"),
@@ -188,11 +195,12 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
                                     style: TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
+                                      color: AppThemes.pageTitle
                                     ),
                                   ),
                                   Text(
                                     "Review and approve/reject pending loan applications.",
-                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                    style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                                   ),
                                 ],
                               ),
@@ -222,6 +230,7 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
           ),
         ],
       ),
+    )
     );
   }
 
@@ -245,10 +254,10 @@ class _LoanReviewPageState extends State<LoanReviewPage> {
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppThemes.innerformButton,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: Text("Review", style: TextStyle(color: Colors.white)),
+        child: Text("Review", style: TextStyle(color: AppThemes.buttonText)),
       )),
     ]);
   }

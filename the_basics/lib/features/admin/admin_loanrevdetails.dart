@@ -3,6 +3,7 @@ import 'package:the_basics/core/widgets/side_menu.dart';
 import 'package:the_basics/core/widgets/top_navbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:the_basics/core/utils/export_service.dart';
+import 'package:the_basics/core/utils/themes.dart';
 // removed email/edge-function usage — notifications are driven by the app
 
 class LoanReviewDetailsPage extends StatefulWidget {
@@ -548,13 +549,13 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           onPressed: decision == null ? null : () => updateLoanStatus(decision!),
           style: ElevatedButton.styleFrom(
             backgroundColor: decision == 'Approved'
-                ? Colors.green
-                : (decision == 'Rejected' ? Colors.red : Colors.grey),
+                ? AppThemes.confirmButton
+                : (decision == 'Rejected' ? AppThemes.rejectButton : Colors.grey),
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           ),
           child: const Text(
             "Confirm",
-            style: TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(color: AppThemes.buttonText, fontSize: 16),
           ),
         ),
         const SizedBox(height: 20),
@@ -565,8 +566,14 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: Column(
+      body: Container(
+    decoration: BoxDecoration(
+      image: DecorationImage(
+        image: AssetImage("assets/imgs/bg_in.png"),
+        fit: BoxFit.cover,
+      ),
+    ),
+    child: Column(
         children: [
           const TopNavBar(splash: "Admin"),
           Expanded(
@@ -599,6 +606,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                                       style: TextStyle(
                                         fontSize: 28,
                                         fontWeight: FontWeight.bold,
+                                        color: AppThemes.pageTitle
                                       ),
                                     ),
                                   ],
@@ -608,7 +616,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
                                   padding: const EdgeInsets.only(left: 48),
                                   child: Text(
                                     "Review the application form and accept or reject the submission.",
-                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                    style: TextStyle(color: AppThemes.pageSubtitle, fontSize: 14),
                                   ),
                                 ),
                                 SizedBox(height: 32),
@@ -666,6 +674,7 @@ class _LoanReviewDetailsPageState extends State<LoanReviewDetailsPage> {
           ),
         ],
       ),
+    )
     );
   }
 }
